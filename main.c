@@ -2,6 +2,25 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+
+#define A Processor->accumulator
+#define X Processor->x_register
+#define S Processor->status
+#define PC Processor->counter
+#define SP Processor->pStack
+
+
+#define DATA Processor->data
+
+#define CF Processor->flags_now.carry
+#define NF Processor->flags_now.negative
+#define ZF Processor->flags_now.zero
+#define OF Processor->flags_now.overflow
+#define DF Processor->flags_now.decimal
+#define BF Processor->flags_now.brk
+#define IF Processor->flags_now.brk
+
+
 uint8_t cycles [256] =
 {
         7, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6, //0x
@@ -24,8 +43,8 @@ uint8_t cycles [256] =
 };
 
 
-struct flags
-    {
+typedef struct {
+
         uint8_t negative;
         uint8_t overflow;
         uint8_t brk;
@@ -33,144 +52,187 @@ struct flags
         uint8_t interrupt;
         uint8_t zero;
         uint8_t carry;
-    };
+}flags;
 
 
-struct registers
+typedef struct
 {
-   uint8_t crrent_opcode;   //
-   uint16_t data;            // Opcode + Data
+        uint8_t crrent_opcode; //
+        uint16_t data;       // Opcode + Data
 
 
-   uint16_t counter;
-   uint8_t accumulator;
-   uint8_t x_register;
-   uint8_t y_register;
-   uint8_t status;
-   uint8_t pStack;
+        uint16_t counter;
+        uint8_t accumulator;
+        uint8_t x_register;
+        uint8_t y_register;
+        uint8_t status;
+        uint8_t pStack;
 
-   struct flags flags_now;
+        flags flags_now;
 
-};
+}processor;
 
-uint8_t recount_status (struct registers *Registers)
-{
-    Registers->status = (Registers->flags_now.negative << 7) | (Registers->flags_now.overflow << 6)  | (Registers->flags_now.brk << 4)
-                        | (Registers->flags_now.decimal << 3)  | (Registers->flags_now.interrupt << 2) |  (Registers->flags_now.zero << 1)
-                        | Registers->flags_now.carry;
-    return (Registers->status);
+uint8_t recount_status (processor *Processor){
+
+        S = (NF << 7) | (OF << 6)  | (BF << 4)| (DF << 3)  | (IF << 2) |  (ZF << 1) | CF;
+        return (S);
 }
-uint8_t read_Byte (uint16_t Address)
-{
-    return 1;
+uint8_t read_Byte (uint16_t Address){
+
+        return 1;
 }
 
-uint8_t write_Byte (uint16_t Address, uint8_t Byte)
-{
-    return 1;
+
+uint8_t write_Byte (uint16_t Address, uint8_t Byte){
+
+        return 1;
 }
 
-uint8_t fetch_byte (struct registers *Registers)
-{
-    read_Byte(Registers->counter);
-    Registers->counter++;
-    return 1;
+uint8_t fetch_byte (processor *Processor){
+
+        read_Byte(PC);
+        PC++;
+        return 1;
 }
 
-uint8_t push_stack (struct registers *Registers, uint8_t Byte)
-{
-    write_Byte(0x0100 + Registers->pStack, Byte);
-    Registers->pStack--;
-    return 1;
+uint8_t push_stack (processor *Processor, uint8_t Byte){
+
+        write_Byte(0x0100 + SP, Byte);
+        SP--;
+        return 1;
 }
 
-uint8_t pull_stack (struct registers *Registers)
-{
-    return (read_Byte(0x0100 + Registers->pStack++));
+uint8_t pull_stack (processor *Processor){
+
+        return (read_Byte(0x0100 + SP++));
 }
 //Adressing modes
 
-uint8_t check_negative (struct registers *Registers)
-{
-    Registers->flags_now.negative= (Registers->accumulator >> 7) ? 1 : 0;
+uint8_t check_negative (processor *Processor){
+
+        NF = (A >> 7) ? 1 : 0;
 }
 
-uint8_t check_zero (struct registers *Registers)
-{
-    Registers->flags_now.zero= (Registers->accumulator == 0) ? 1 : 0;
+uint8_t check_zero (processor *Processor){
+
+        ZF = (A == 0) ? 1 : 0;
 }
 
-void index_indirect (struct registers *Registers)
-{
-    Registers->counter = 0x0000 |  (fetch_byte(Registers) + Registers->x_register); // Fetch Bal, counter = BAL + X
-    uint8_t ADL = fetch_byte(Registers);
-    uint8_t AHL = fetch_byte(Registers);
-    Registers->counter = (AHL << 8) |  ADL;
-    Registers->data = fetch_byte(Registers);
+void index_indirect (processor *Processor){
 
-}
-
-
-void BRK (struct registers *Registers)
-{
-   fetch_byte(Registers); // fetch opcode and discard
-   push_stack (Registers, (Registers->counter) >> 8); // PCH
-   push_stack (Registers, Registers->counter); // PCL
-   Registers->flags_now.brk = 1;
-   push_stack(Registers, recount_status(Registers));
-   //fetch pcl and pch
-
-}
-
-void LDA (struct registers *Registers)
-{
-    Registers->accumulator = Registers->data;
-    check_zero(Registers);
-    check_negative(Registers);
-}
-void CLC (struct registers *Registers)
-{
-    Registers->flags_now.carry = 0;
-}
-
-void SED (struct registers *Registers)
-{
-    Registers->flags_now.decimal = 1;
-}
-
-void STA (struct registers *Registers)
-{
-    write_Byte(Registers->data, Registers->accumulator);
-}
-
-void CLD (struct registers *Registers)
-{
-    Registers->flags_now.decimal = 0;
-}
-
-void ADC (struct registers *Registers)
-{
-    uint16_t sum = Registers->accumulator + Registers->data + Registers->flags_now.carry;
-    uint8_t sign_acc_bef= Registers->accumulator >> 7;
-    uint8_t sign_data = Registers->data >> 7;
-    Registers->accumulator = sum;
-    uint8_t sign_acc_aft = Registers->accumulator >> 7;
-    Registers->flags_now.overflow = ((~sign_acc_bef&~sign_data&sign_acc_aft)|(sign_acc_bef&sign_data&~sign_acc_aft) == 1) ? 1 : 0; //check later
-    Registers->flags_now.carry = (sum > 255) ? 1 : 0;
-    check_zero(Registers);
-    check_negative(Registers);
-
+        PC = 0x0000 |  (fetch_byte(Processor) + X); // Fetch Bal, counter = BAL + X
+        uint8_t ADL = fetch_byte(Processor);
+        uint8_t AHL = fetch_byte(Processor);
+        PC = (AHL << 8) |  ADL;
+        DATA = fetch_byte(Processor);
 
 }
 
 
-void (*pWhatMode[256])(struct registers *) = {BRK };
+void BRK (processor *Processor){
 
-int main()
+        fetch_byte(Processor); // fetch opcode and discard
+        push_stack (Processor, (PC >> 8)); // PCH
+        push_stack (Processor, PC); // PCL
+        BF = 1;
+        push_stack(Processor, recount_status(Processor));
+        //fetch pcl and pch
+
+}
+
+void LDA (processor *Processor){
+
+        A = DATA;
+        check_zero(Processor);
+        check_negative(Processor);
+}
+void CLC (processor *Processor){
+
+        CF = 0;
+}
+
+void SED (processor *Processor){
+
+        DF = 1;
+}
+
+void STA (processor *Processor){
+
+        write_Byte(DATA, A);
+}
+
+void CLD (processor *Processor){
+
+        DF = 0;
+}
+
+void SEC (processor *Processor){
+
+        CF = 1;
+}
+
+void ADC (processor *Processor){
+
+        if (DF == 0) {
+
+                uint16_t sum = A + DATA + CF;
+                uint8_t sign_acc_bef= A >> 7;
+                uint8_t sign_data = DATA >> 7;
+                A = sum;
+                uint8_t sign_acc_aft = A >> 7;
+                OF= ((~sign_acc_bef&~sign_data&sign_acc_aft)|(sign_acc_bef&sign_data&~sign_acc_aft) == 1) ? 1 : 0; //check later
+                CF = (sum > 255) ? 1 : 0;
+        }
+        else
+        {
+                uint8_t l_byte = (A & 0x0F) + (DATA & 0x0F) + CF;
+                uint8_t carry_dec;
+                if (l_byte > 9) {
+                        l_byte = l_byte-10;
+                        carry_dec = 1;
+                }
+                uint8_t h_byte = (A >> 4) + (DATA >> 4) + carry_dec;
+                if (h_byte > 9) {
+                        h_byte = h_byte-10;
+                        CF = 1;
+                }
+
+                A = (h_byte << 4) | l_byte;
+        }
+        check_zero(Processor);
+        check_negative(Processor);
+
+
+}
+
+void SBC (processor *Processor)
 {
-    struct flags crr_flags;
-    struct flags *p_crr_flags = &crr_flags;
-    p_crr_flags->negative = 1;
-    printf("%d", p_crr_flags->overflow);
-    return 0;
+        if (DF == 0) {
+                uint16_t sum = ~DATA + CF + A;
+                CF = (sum > 255) ? 1 : 0;
+                A = sum;
+        }
+        else {
+                uint16_t l_byte = (A & 0x0F) + (DATA & 0x0F) + CF;
+                uint8_t carry_dec;
+                carry_dec = (l_byte > 255) ? 1 : 0;
+                l_byte = ~(l_byte - 1);
+                uint16_t h_byte = (A >> 4) + (DATA >> 4) + carry_dec;
+                CF = (h_byte > 255) ? 1 : 0;
+                h_byte = ~(h_byte - 1);
+                A= (h_byte << 4) | l_byte;
+        }
+
+}
+
+
+void (*pWhatMode[256]) (processor *) = {BRK };
+
+int main(){
+
+        flags crr_flags;
+        flags *p_crr_flags = &crr_flags;
+        p_crr_flags->negative = 1;
+        printf("%d", p_crr_flags->overflow);
+        return 0;
 }
