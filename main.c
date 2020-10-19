@@ -39,7 +39,7 @@ struct flags
 struct registers
 {
    uint8_t crrent_opcode;   //
-   uint8_t data;            // Opcode + Data
+   uint16_t data;            // Opcode + Data
 
 
    uint16_t counter;
@@ -90,6 +90,16 @@ uint8_t pull_stack (struct registers *Registers)
 }
 //Adressing modes
 
+uint8_t check_negative (struct registers *Registers)
+{
+    Registers->flags_now.negative= (Registers->accumulator >> 7) ? 1 : 0;
+}
+
+uint8_t check_zero (struct registers *Registers)
+{
+    Registers->flags_now.zero= (Registers->accumulator == 0) ? 1 : 0;
+}
+
 void index_indirect (struct registers *Registers)
 {
     Registers->counter = 0x0000 |  (fetch_byte(Registers) + Registers->x_register); // Fetch Bal, counter = BAL + X
@@ -109,6 +119,47 @@ void BRK (struct registers *Registers)
    Registers->flags_now.brk = 1;
    push_stack(Registers, recount_status(Registers));
    //fetch pcl and pch
+
+}
+
+void LDA (struct registers *Registers)
+{
+    Registers->accumulator = Registers->data;
+    check_zero(Registers);
+    check_negative(Registers);
+}
+void CLC (struct registers *Registers)
+{
+    Registers->flags_now.carry = 0;
+}
+
+void SED (struct registers *Registers)
+{
+    Registers->flags_now.decimal = 1;
+}
+
+void STA (struct registers *Registers)
+{
+    write_Byte(Registers->data, Registers->accumulator);
+}
+
+void CLD (struct registers *Registers)
+{
+    Registers->flags_now.decimal = 0;
+}
+
+void ADC (struct registers *Registers)
+{
+    uint16_t sum = Registers->accumulator + Registers->data + Registers->flags_now.carry;
+    uint8_t sign_acc_bef= Registers->accumulator >> 7;
+    uint8_t sign_data = Registers->data >> 7;
+    Registers->accumulator = sum;
+    uint8_t sign_acc_aft = Registers->accumulator >> 7;
+    Registers->flags_now.overflow = ((~sign_acc_bef&~sign_data&sign_acc_aft)|(sign_acc_bef&sign_data&~sign_acc_aft) == 1) ? 1 : 0; //check later
+    Registers->flags_now.carry = (sum > 255) ? 1 : 0;
+    check_zero(Registers);
+    check_negative(Registers);
+
 
 }
 
