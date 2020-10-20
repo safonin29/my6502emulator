@@ -10,15 +10,16 @@
 #define SP Processor->pStack
 
 
-#define DATA Processor->data
+#define M Processor->memory
 
 #define CF Processor->flags_now.carry
 #define NF Processor->flags_now.negative
 #define ZF Processor->flags_now.zero
-#define OF Processor->flags_now.overflow
 #define DF Processor->flags_now.decimal
 #define BF Processor->flags_now.brk
-#define IF Processor->flags_now.brk
+#define IF Processor->flags_now.interrupt
+#define OF Processor->flags_now.overflow
+
 
 
 uint8_t cycles [256] =
@@ -58,7 +59,7 @@ typedef struct {
 typedef struct
 {
         uint8_t crrent_opcode; //
-        uint16_t data;       // Opcode + Data
+        uint16_t memory;       // Opcode + Data
 
 
         uint16_t counter;
@@ -111,6 +112,7 @@ uint8_t pull_stack (processor *Processor){
 uint8_t check_negative (processor *Processor){
 
         NF = (A >> 7) ? 1 : 0;
+
 }
 
 uint8_t check_zero (processor *Processor){
@@ -124,7 +126,7 @@ void index_indirect (processor *Processor){
         uint8_t ADL = fetch_byte(Processor);
         uint8_t AHL = fetch_byte(Processor);
         PC = (AHL << 8) |  ADL;
-        DATA = fetch_byte(Processor);
+        M = fetch_byte(Processor);
 
 }
 
@@ -142,7 +144,7 @@ void BRK (processor *Processor){
 
 void LDA (processor *Processor){
 
-        A = DATA;
+        A = M;
         check_zero(Processor);
         check_negative(Processor);
 }
@@ -158,7 +160,7 @@ void SED (processor *Processor){
 
 void STA (processor *Processor){
 
-        write_Byte(DATA, A);
+        write_Byte(M, A);
 }
 
 void CLD (processor *Processor){
@@ -171,13 +173,18 @@ void SEC (processor *Processor){
         CF = 1;
 }
 
+void CLV (processor *Processor){
+
+        OF = 0;
+}
+
 void ADC (processor *Processor){
 
         if (DF == 0) {
 
-                uint16_t sum = A + DATA + CF;
+                uint16_t sum = A + M + CF;
                 uint8_t sign_acc_bef= A >> 7;
-                uint8_t sign_data = DATA >> 7;
+                uint8_t sign_data = M >> 7;
                 A = sum;
                 uint8_t sign_acc_aft = A >> 7;
                 OF= ((~sign_acc_bef&~sign_data&sign_acc_aft)|(sign_acc_bef&sign_data&~sign_acc_aft) == 1) ? 1 : 0; //check later
@@ -185,13 +192,13 @@ void ADC (processor *Processor){
         }
         else
         {
-                uint8_t l_byte = (A & 0x0F) + (DATA & 0x0F) + CF;
+                uint8_t l_byte = (A & 0x0F) + (M & 0x0F) + CF;
                 uint8_t carry_dec;
                 if (l_byte > 9) {
                         l_byte = l_byte-10;
                         carry_dec = 1;
                 }
-                uint8_t h_byte = (A >> 4) + (DATA >> 4) + carry_dec;
+                uint8_t h_byte = (A >> 4) + (M >> 4) + carry_dec;
                 if (h_byte > 9) {
                         h_byte = h_byte-10;
                         CF = 1;
@@ -205,25 +212,66 @@ void ADC (processor *Processor){
 
 }
 
-void SBC (processor *Processor)
-{
+void SBC (processor *Processor){
         if (DF == 0) {
-                uint16_t sum = ~DATA + CF + A;
+                uint16_t sum = ~M + CF + A;
+                uint8_t sign_acc_bef= A >> 7;
+                uint8_t sign_data = ~M >> 7;
                 CF = (sum > 255) ? 1 : 0;
                 A = sum;
+                uint8_t sign_acc_aft = A >> 7;
+                OF= ((~sign_acc_bef&~sign_data&sign_acc_aft)|(sign_acc_bef&sign_data&~sign_acc_aft) == 1) ? 1 : 0; //check later
         }
         else {
-                uint16_t l_byte = (A & 0x0F) + (DATA & 0x0F) + CF;
+                uint16_t l_byte = (A & 0x0F) + (M & 0x0F) + CF;
                 uint8_t carry_dec;
                 carry_dec = (l_byte > 255) ? 1 : 0;
                 l_byte = ~(l_byte - 1);
-                uint16_t h_byte = (A >> 4) + (DATA >> 4) + carry_dec;
+                uint16_t h_byte = (A >> 4) + (M >> 4) + carry_dec;
                 CF = (h_byte > 255) ? 1 : 0;
                 h_byte = ~(h_byte - 1);
-                A= (h_byte << 4) | l_byte;
+                A= (h_byte << 4) | l_byte; // check later
         }
 
 }
+
+void AND (processor *Processor){
+
+        A = A & M;
+        check_zero(Processor);
+        check_negative(Processor);
+
+}
+
+void ORA (processor *Processor){
+
+        A = A | M;
+        check_zero(Processor);
+        check_negative(Processor);
+
+}
+
+void EOR (processor *Processor){
+
+        A = A ^ M;
+        check_zero(Processor);
+        check_negative(Processor);
+
+}
+
+void SEI (processor *Processor){
+
+        IF = 1;
+
+}
+
+void CLI (processor *Processor){
+
+        IF = 0;
+
+}
+
+
 
 
 void (*pWhatMode[256]) (processor *) = {BRK };
@@ -233,6 +281,6 @@ int main(){
         flags crr_flags;
         flags *p_crr_flags = &crr_flags;
         p_crr_flags->negative = 1;
-        printf("%d", p_crr_flags->overflow);
+  //      printf("%d", OF);
         return 0;
 }
