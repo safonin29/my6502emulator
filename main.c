@@ -11,6 +11,7 @@
 
 
 #define M Processor->memory
+#define OPCODE Processor->crrent_opcode
 
 #define CF Processor->flags_now.carry
 #define NF Processor->flags_now.negative
@@ -19,6 +20,15 @@
 #define BF Processor->flags_now.brk
 #define IF Processor->flags_now.interrupt
 #define OF Processor->flags_now.overflow
+
+#define BPL 0x10
+#define BMI 0x30
+#define BVC 0x50
+#define BVS 0x70
+#define BCC 0x90
+#define BCS 0xB0
+#define BNE 0xD0
+#define BEQ 0xF0
 
 
 
@@ -59,7 +69,7 @@ typedef struct {
 typedef struct
 {
         uint8_t crrent_opcode; //
-        uint16_t memory;       // Opcode + Data
+        uint16_t memory;       //
 
 
         uint16_t counter;
@@ -127,6 +137,57 @@ void index_indirect (processor *Processor){
         uint8_t AHL = fetch_byte(Processor);
         PC = (AHL << 8) |  ADL;
         M = fetch_byte(Processor);
+
+}
+void implied(processor *Processor) {
+
+        return;
+
+}
+
+void absolute (processor *Processor) {
+
+        uint8_t Adl = fetch_byte(Processor);
+        uint8_t Ahl = fetch_byte(Processor);
+        uint16_t Adr = (ahl << 8 )| adl;
+        M = read_Byte(Adr);
+        return;
+
+
+}
+void zero_page (processor *Processor){
+
+        uint8_t Adl = fetch_byte(Processor);
+        uint16_t Adr = 0 | adl;
+        M = read_Byte(Adr);
+        return;
+
+
+}
+
+void immediate (processor *Processor){
+
+        M = fetch_byte(Processor);
+        return;
+}
+
+void abs_index_x (processor *Processor){
+
+        uint8_t bal = fetch_byte(Processor);
+        uint8_t bah = fetch_byte(Processor);
+        uint16_t Adr = ((ahl << 8 )| adl ) + X;
+        M = read_Byte(Adr);
+        return;
+
+}
+
+void abs_index_y (processor *Processor){
+
+        uint8_t bal = fetch_byte(Processor);
+        uint8_t bah = fetch_byte(Processor);
+        uint16_t Adr = ((ahl << 8 )| adl ) + Y;
+        M = read_Byte(Adr);
+        return;
 
 }
 
@@ -265,13 +326,75 @@ void SEI (processor *Processor){
 
 }
 
+
 void CLI (processor *Processor){
 
         IF = 0;
 
 }
 
+void JMP (processor *Processor){
 
+        PC = M;
+
+}
+
+void Bxx (processor *Processor){
+
+        uint8_t label = M;
+        switch (OPCODE)
+        {
+        case BPL:
+                if (NF  == 0 )
+                        PC += label;
+                break;
+        case BMI:
+                if (NF  == 1 )
+                        PC += label;
+                break;
+        case BVC:
+                if (OF == 0)
+                        PC += label;
+                break;
+        case BVS:
+                if (OF == 1)
+                        PC += label;
+                break;
+        case BCC:
+                if (CF == 0)
+                        PC += label;
+                break;
+        case BCS:
+                if (CF == 1)
+                        PC += label;
+                break;
+        case BNE:
+                if (ZF == 1)
+                        PC += label;
+                break;
+        case BEQ:
+                if (ZF == 0)
+                        PC += label;
+                break;
+        }
+
+}
+
+void CMP (processor *Processor)
+{
+    uint8_t count = M;
+    ZF = (count == A) ? 1 : 0;
+    CF = (count <= A) ? 1 : 0;
+    NF = ((A  ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
+
+}
+
+void BIT (processor *Processor){
+    uint8_t sum = A & M;
+    ZF = (sum == 0) ? 1 : 0;
+    NF = (sum >> 7 == 1) ? 1 : 0;
+    OF = (sum &0x40) >> 6 == 1 ) ? 1 : 0;
+}
 
 
 void (*pWhatMode[256]) (processor *) = {BRK };
@@ -281,6 +404,6 @@ int main(){
         flags crr_flags;
         flags *p_crr_flags = &crr_flags;
         p_crr_flags->negative = 1;
-  //      printf("%d", OF);
+        //      printf("%d", OF);
         return 0;
 }
