@@ -5,6 +5,7 @@
 
 #define A Processor->accumulator
 #define X Processor->x_register
+#define Y Processor->y_register
 #define S Processor->status
 #define PC Processor->counter
 #define SP Processor->pStack
@@ -147,8 +148,8 @@ void implied(processor *Processor) {
 
 void absolute (processor *Processor) {
 
-        uint8_t Adl = fetch_byte(Processor);
-        uint8_t Ahl = fetch_byte(Processor);
+        uint8_t adl = fetch_byte(Processor);
+        uint8_t ahl = fetch_byte(Processor);
         uint16_t Adr = (ahl << 8 )| adl;
         M = read_Byte(Adr);
         return;
@@ -157,9 +158,9 @@ void absolute (processor *Processor) {
 }
 void zero_page (processor *Processor){
 
-        uint8_t Adl = fetch_byte(Processor);
-        uint16_t Adr = 0 | adl;
-        M = read_Byte(Adr);
+        uint8_t adl = fetch_byte(Processor);
+        uint16_t adr = 0 | adl;
+        M = read_Byte(adr);
         return;
 
 
@@ -175,8 +176,8 @@ void abs_index_x (processor *Processor){
 
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
-        uint16_t Adr = ((ahl << 8 )| adl ) + X;
-        M = read_Byte(Adr);
+        uint16_t adr = ((bah << 8 )| bal ) + X;
+        M = read_Byte(adr);
         return;
 
 }
@@ -185,8 +186,8 @@ void abs_index_y (processor *Processor){
 
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
-        uint16_t Adr = ((ahl << 8 )| adl ) + Y;
-        M = read_Byte(Adr);
+        uint16_t adr = ((bah << 8 )| bal ) + Y;
+        M = read_Byte(adr);
         return;
 
 }
@@ -385,7 +386,7 @@ void CMP (processor *Processor)
     uint8_t count = M;
     ZF = (count == A) ? 1 : 0;
     CF = (count <= A) ? 1 : 0;
-    NF = ((A  ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
+    NF = ((A + ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
 
 }
 
@@ -393,7 +394,7 @@ void BIT (processor *Processor){
     uint8_t sum = A & M;
     ZF = (sum == 0) ? 1 : 0;
     NF = (sum >> 7 == 1) ? 1 : 0;
-    OF = (sum &0x40) >> 6 == 1 ) ? 1 : 0;
+    OF = ((sum &0x40) >> 6 == 1 ) ? 1 : 0;
 }
 
 
