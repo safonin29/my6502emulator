@@ -11,8 +11,8 @@
 #define SP Processor->pStack
 
 
-#define M Processor->memory
 #define OPCODE Processor->crrent_opcode
+#define ADDR Processor->address
 
 #define CF Processor->flags_now.carry
 #define NF Processor->flags_now.negative
@@ -70,7 +70,8 @@ typedef struct {
 typedef struct
 {
         uint8_t crrent_opcode; //
-        uint16_t memory;       //
+        uint16_t memory;
+        uint16_t address;       //
 
 
         uint16_t counter;
@@ -120,75 +121,72 @@ uint8_t pull_stack (processor *Processor){
 }
 //Adressing modes
 
-uint8_t check_negative (processor *Processor){
+uint8_t check_negative (processor *Processor, uint8_t reg){
 
-        NF = (A >> 7) ? 1 : 0;
+        NF = (reg >> 7) ? 1 : 0;
 
 }
 
-uint8_t check_zero (processor *Processor){
+uint8_t check_zero (processor *Processor, uint8_t reg){
 
-        ZF = (A == 0) ? 1 : 0;
+        ZF = (reg == 0) ? 1 : 0;
 }
 
-void index_indirect (processor *Processor){
+uint16_t index_indirect (processor *Processor){
 
         PC = 0x0000 |  (fetch_byte(Processor) + X); // Fetch Bal, counter = BAL + X
         uint8_t ADL = fetch_byte(Processor);
         uint8_t AHL = fetch_byte(Processor);
         PC = (AHL << 8) |  ADL;
-        M = fetch_byte(Processor);
+        uint16_t adr = PC++;
+        return adr;
 
 }
-void implied(processor *Processor) {
+uint16_t implied(processor *Processor) {
 
-        return;
+        return PC;
 
 }
 
-void absolute (processor *Processor) {
+uint16_t absolute (processor *Processor) {
 
         uint8_t adl = fetch_byte(Processor);
         uint8_t ahl = fetch_byte(Processor);
         uint16_t Adr = (ahl << 8 )| adl;
-        M = read_Byte(Adr);
-        return;
+        return Adr;
 
 
 }
-void zero_page (processor *Processor){
+uint16_t zero_page (processor *Processor){
 
         uint8_t adl = fetch_byte(Processor);
         uint16_t adr = 0 | adl;
-        M = read_Byte(adr);
-        return;
+        return adr;
 
 
 }
 
-void immediate (processor *Processor){
+uint16_t immediate (processor *Processor){
 
-        M = fetch_byte(Processor);
-        return;
+        uint16_t adr = PC++;
+        return adr;
 }
 
-void abs_index_x (processor *Processor){
+uint16_t abs_index_x (processor *Processor){
 
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
         uint16_t adr = ((bah << 8 )| bal ) + X;
-        M = read_Byte(adr);
-        return;
+        return adr;
 
 }
 
-void abs_index_y (processor *Processor){
+uint16_t abs_index_y (processor *Processor){
 
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
         uint16_t adr = ((bah << 8 )| bal ) + Y;
-        M = read_Byte(adr);
-        return;
+        return adr;
 
 }
 
@@ -206,9 +204,9 @@ void BRK (processor *Processor){
 
 void LDA (processor *Processor){
 
-        A = M;
-        check_zero(Processor);
-        check_negative(Processor);
+        A = read_Byte(ADDR);
+        check_zero(Processor, A);
+        check_negative(Processor, A);
 }
 void CLC (processor *Processor){
 
@@ -222,7 +220,7 @@ void SED (processor *Processor){
 
 void STA (processor *Processor){
 
-        write_Byte(M, A);
+        write_Byte(ADDR, A);
 }
 
 void CLD (processor *Processor){
@@ -242,25 +240,26 @@ void CLV (processor *Processor){
 
 void ADC (processor *Processor){
 
+        uint8_t data = read_Byte(ADDR);
         if (DF == 0) {
 
-                uint16_t sum = A + M + CF;
+                uint16_t sum = A + data + CF;
                 uint8_t sign_acc_bef= A >> 7;
-                uint8_t sign_data = M >> 7;
+                uint8_t sign_data = data >> 7;
                 A = sum;
-                uint8_t sign_acc_aft = A >> 7;
+                uint8_t sign_acc_aft = data >> 7;
                 OF= ((~sign_acc_bef&~sign_data&sign_acc_aft)|(sign_acc_bef&sign_data&~sign_acc_aft) == 1) ? 1 : 0; //check later
                 CF = (sum > 255) ? 1 : 0;
         }
         else
         {
-                uint8_t l_byte = (A & 0x0F) + (M & 0x0F) + CF;
+                uint8_t l_byte = (A & 0x0F) + (data & 0x0F) + CF;
                 uint8_t carry_dec;
                 if (l_byte > 9) {
                         l_byte = l_byte-10;
                         carry_dec = 1;
                 }
-                uint8_t h_byte = (A >> 4) + (M >> 4) + carry_dec;
+                uint8_t h_byte = (A >> 4) + (data >> 4) + carry_dec;
                 if (h_byte > 9) {
                         h_byte = h_byte-10;
                         CF = 1;
@@ -268,56 +267,60 @@ void ADC (processor *Processor){
 
                 A = (h_byte << 4) | l_byte;
         }
-        check_zero(Processor);
-        check_negative(Processor);
+        check_zero(Processor, A);
+        check_negative(Processor, A);
 
 
 }
 
 void SBC (processor *Processor){
+        uint8_t data = read_Byte(ADDR);
         if (DF == 0) {
-                uint16_t sum = ~M + CF + A;
+                uint16_t sum = ~data + CF + A;
                 uint8_t sign_acc_bef= A >> 7;
-                uint8_t sign_data = ~M >> 7;
+                uint8_t sign_data = ~data >> 7;
                 CF = (sum > 255) ? 1 : 0;
                 A = sum;
                 uint8_t sign_acc_aft = A >> 7;
                 OF= ((~sign_acc_bef&~sign_data&sign_acc_aft)|(sign_acc_bef&sign_data&~sign_acc_aft) == 1) ? 1 : 0; //check later
         }
         else {
-                uint16_t l_byte = (A & 0x0F) + (M & 0x0F) + CF;
+                uint16_t l_byte = (A & 0x0F) + (data & 0x0F) + CF;
                 uint8_t carry_dec;
                 carry_dec = (l_byte > 255) ? 1 : 0;
                 l_byte = ~(l_byte - 1);
-                uint16_t h_byte = (A >> 4) + (M >> 4) + carry_dec;
+                uint16_t h_byte = (A >> 4) + (data >> 4) + carry_dec;
                 CF = (h_byte > 255) ? 1 : 0;
                 h_byte = ~(h_byte - 1);
                 A= (h_byte << 4) | l_byte; // check later
         }
 
+        check_zero(Processor, A);
+        check_negative(Processor, A);
+
 }
 
 void AND (processor *Processor){
 
-        A = A & M;
-        check_zero(Processor);
-        check_negative(Processor);
+        A = A & read_Byte(ADDR);
+        check_zero(Processor, A);
+        check_negative(Processor, A);
 
 }
 
 void ORA (processor *Processor){
 
-        A = A | M;
-        check_zero(Processor);
-        check_negative(Processor);
+        A = A | read_Byte(ADDR);
+        check_zero(Processor, A);
+        check_negative(Processor, A);
 
 }
 
 void EOR (processor *Processor){
 
-        A = A ^ M;
-        check_zero(Processor);
-        check_negative(Processor);
+        A = A ^ read_Byte(ADDR);
+        check_zero(Processor, A);
+        check_negative(Processor, A);
 
 }
 
@@ -336,13 +339,13 @@ void CLI (processor *Processor){
 
 void JMP (processor *Processor){
 
-        PC = M;
+        PC = read_Byte(ADDR);
 
 }
 
 void Bxx (processor *Processor){
 
-        uint8_t label = M;
+        uint8_t label = read_Byte(ADDR);
         switch (OPCODE)
         {
         case BPL:
@@ -383,20 +386,94 @@ void Bxx (processor *Processor){
 
 void CMP (processor *Processor)
 {
-    uint8_t count = M;
-    ZF = (count == A) ? 1 : 0;
-    CF = (count <= A) ? 1 : 0;
-    NF = ((A + ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
+        uint8_t count = read_Byte(ADDR);
+        ZF = (count == A) ? 1 : 0;
+        CF = (count <= A) ? 1 : 0;
+        NF = ((A + ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
 
 }
 
 void BIT (processor *Processor){
-    uint8_t sum = A & M;
-    ZF = (sum == 0) ? 1 : 0;
-    NF = (sum >> 7 == 1) ? 1 : 0;
-    OF = ((sum &0x40) >> 6 == 1 ) ? 1 : 0;
+        uint8_t data = read_Byte(ADDR);
+        uint8_t sum = A & data;
+        ZF = (sum == 0) ? 1 : 0;
+        NF = (sum >> 7 == 1) ? 1 : 0;
+        OF = ((sum &0x40) >> 6 == 1 ) ? 1 : 0;
 }
 
+void LDX (processor * Processor){
+
+        uint8_t data = read_Byte(ADDR);
+        X = data;
+        check_zero(Processor, X);
+        check_negative(Processor, X);
+
+}
+
+void LDY (processor * Processor){
+
+        uint8_t data = read_Byte(ADDR);
+        Y = data;
+        check_zero(Processor, X);
+        check_negative(Processor, X);
+}
+
+void STX (processor * Processor){
+
+
+        write_Byte(ADDR, X);
+
+}
+
+void STY (processor * Processor){
+
+
+        write_Byte(ADDR, Y);
+
+}
+
+void INX (processor * Processor){
+
+        X++;
+        check_zero(Processor, X);
+        check_negative(Processor, X);
+
+}
+
+
+void INY (processor * Processor){
+
+        Y++;
+        check_zero(Processor, Y);
+        check_negative(Processor, Y);
+
+}
+
+void DEX (processor * Processor){
+
+        X--;
+        check_zero(Processor, X);
+        check_negative(Processor, X);
+
+}
+
+
+void DEY (processor * Processor){
+
+        Y--;
+        check_zero(Processor, Y);
+        check_negative(Processor, Y);
+
+}
+
+void CPX (processor *Processor){
+
+        uint8_t count = read_Byte(ADDR);
+        ZF = (count == X) ? 1 : 0;
+        CF = (count <= X) ? 1 : 0;
+        NF = ((X + ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
+
+}
 
 void (*pWhatMode[256]) (processor *) = {BRK };
 
