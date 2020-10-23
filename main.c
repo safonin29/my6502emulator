@@ -87,8 +87,8 @@ typedef struct
 
 uint8_t recount_status (processor *Processor){
 
-        S = (NF << 7) | (OF << 6)  | (BF << 4)| (DF << 3)  | (IF << 2) |  (ZF << 1) | CF;
-        return (S);
+        uint8_t status = (NF << 7) | (OF << 6)  | (BF << 4)| (DF << 3)  | (IF << 2) |  (ZF << 1) | CF;
+        return (status);
 }
 uint8_t read_Byte (uint16_t Address){
 
@@ -121,16 +121,14 @@ uint8_t pull_stack (processor *Processor){
 }
 //Adressing modes
 
-uint8_t check_negative (processor *Processor, uint8_t reg){
+uint8_t check_n_z (processor *Processor, uint8_t reg){
 
         NF = (reg >> 7) ? 1 : 0;
-
-}
-
-uint8_t check_zero (processor *Processor, uint8_t reg){
-
         ZF = (reg == 0) ? 1 : 0;
+        return;
+
 }
+
 
 uint16_t index_indirect (processor *Processor){
 
@@ -190,6 +188,18 @@ uint16_t abs_index_y (processor *Processor){
 
 }
 
+uint16_t indirect_index (processor *Processor){
+
+        uint16_t ial  = 0 + fetch_byte(Processor);
+        uint8_t bal = read_Byte(ial);
+        uint8_t bah = read_Byte(ial+1);
+        uint16_t adr = (bah << 8 | bal) + Y;
+        return (adr);
+
+
+
+}
+
 
 void BRK (processor *Processor){
 
@@ -197,7 +207,8 @@ void BRK (processor *Processor){
         push_stack (Processor, (PC >> 8)); // PCH
         push_stack (Processor, PC); // PCL
         BF = 1;
-        push_stack(Processor, recount_status(Processor));
+        S = recount_status(Processor);
+        push_stack(Processor, S);
         //fetch pcl and pch
 
 }
@@ -205,8 +216,7 @@ void BRK (processor *Processor){
 void LDA (processor *Processor){
 
         A = read_Byte(ADDR);
-        check_zero(Processor, A);
-        check_negative(Processor, A);
+        check_n_z(Processor, A);
 }
 void CLC (processor *Processor){
 
@@ -267,8 +277,7 @@ void ADC (processor *Processor){
 
                 A = (h_byte << 4) | l_byte;
         }
-        check_zero(Processor, A);
-        check_negative(Processor, A);
+        check_n_z(Processor, A);
 
 
 }
@@ -295,32 +304,30 @@ void SBC (processor *Processor){
                 A= (h_byte << 4) | l_byte; // check later
         }
 
-        check_zero(Processor, A);
-        check_negative(Processor, A);
+        check_n_z(Processor, A);
 
 }
 
 void AND (processor *Processor){
 
         A = A & read_Byte(ADDR);
-        check_zero(Processor, A);
-        check_negative(Processor, A);
+        check_n_z(Processor, A);
+        return;
 
 }
 
 void ORA (processor *Processor){
 
         A = A | read_Byte(ADDR);
-        check_zero(Processor, A);
-        check_negative(Processor, A);
+        check_n_z(Processor, A);
+        return;
 
 }
 
 void EOR (processor *Processor){
 
         A = A ^ read_Byte(ADDR);
-        check_zero(Processor, A);
-        check_negative(Processor, A);
+        check_n_z(Processor, A);
 
 }
 
@@ -405,8 +412,8 @@ void LDX (processor * Processor){
 
         uint8_t data = read_Byte(ADDR);
         X = data;
-        check_zero(Processor, X);
-        check_negative(Processor, X);
+        check_n_z(Processor, X);
+        return;
 
 }
 
@@ -414,8 +421,8 @@ void LDY (processor * Processor){
 
         uint8_t data = read_Byte(ADDR);
         Y = data;
-        check_zero(Processor, X);
-        check_negative(Processor, X);
+        check_n_z(Processor, X);
+        return;
 }
 
 void STX (processor * Processor){
@@ -435,8 +442,8 @@ void STY (processor * Processor){
 void INX (processor * Processor){
 
         X++;
-        check_zero(Processor, X);
-        check_negative(Processor, X);
+        check_n_z(Processor, X);
+        return;
 
 }
 
@@ -444,16 +451,16 @@ void INX (processor * Processor){
 void INY (processor * Processor){
 
         Y++;
-        check_zero(Processor, Y);
-        check_negative(Processor, Y);
+        check_n_z(Processor, Y);
+        return;
 
 }
 
 void DEX (processor * Processor){
 
         X--;
-        check_zero(Processor, X);
-        check_negative(Processor, X);
+        check_n_z(Processor, X);
+        return;
 
 }
 
@@ -461,8 +468,8 @@ void DEX (processor * Processor){
 void DEY (processor * Processor){
 
         Y--;
-        check_zero(Processor, Y);
-        check_negative(Processor, Y);
+        check_n_z(Processor, Y);
+        return;
 
 }
 
@@ -474,6 +481,121 @@ void CPX (processor *Processor){
         NF = ((X + ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
 
 }
+void CPY (processor *Processor){
+
+        uint8_t count = read_Byte(ADDR);
+        ZF = (count == X) ? 1 : 0;
+        CF = (count <= X) ? 1 : 0;
+        NF = ((Y + ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
+
+}
+
+void TAX (processor *Processor){
+
+
+        X  =  A;
+        check_n_z(Processor, Y);
+        return;
+}
+
+void TXA (processor *Processor){
+
+
+        A  =  X;
+        check_n_z(Processor, A);
+        return;
+}
+
+void TAY (processor *Processor){
+
+
+        Y  =  A;
+        check_n_z(Processor, Y);
+        return;
+}
+
+void TYA (processor *Processor){
+
+
+        A  =  Y;
+        check_n_z(Processor, A);
+        return;
+}
+
+void JSR (processor *Processor){
+
+        uint16_t save_addr = PC-1;
+        uint8_t PCH = save_addr >> 8;
+        push_stack(Processor, PCH);
+        uint8_t PCL = (uint8_t) save_addr;
+        push_stack(Processor, PCL);
+        PC = ADDR;
+        return;
+
+}
+
+
+void PHP (processor *Processor){
+
+
+        S = recount_status(Processor);
+        push_stack(Processor, S);
+        return;
+}
+
+void PLP (processor *Processor){
+
+
+        S = pull_stack(Processor);
+        return;
+}
+
+void RTS (processor *Processor) {
+
+
+        uint8_t PCL = pull_stack(Processor);
+        uint8_t PCH = pull_stack(Processor);
+        PC = ((PCH << 8) | PCL ) + 1;  // check later;
+        return;
+
+}
+
+void PHA (processor *Processor){
+
+        push_stack(Processor, A);
+        return;
+
+
+}
+
+void PLA (processor *Processor){
+
+        A = pull_stack(Processor);
+        check_n_z(Processor, A);
+        return;
+
+
+}
+
+void TXS (processor *Processor){
+
+
+        SP = X;
+        return;
+
+}
+
+void TSX (processor *Processor){
+
+
+        X = SP;
+        check_n_z(Processor, X);
+        return;
+
+}
+
+
+
 
 void (*pWhatMode[256]) (processor *) = {BRK };
 
