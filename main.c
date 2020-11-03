@@ -85,10 +85,34 @@ typedef struct
 
 }processor;
 
+uint8_t reset (processor *Processor){
+
+        uint8_t PCL = read_Byte(0xFFFC);
+        uint8_t PHL = read_Byte(0xFFFD);
+
+        PC = (PHL << 8) || PCL;
+
+        IF = 1;
+
+
+}
+
 uint8_t recount_status (processor *Processor){
 
         uint8_t status = (NF << 7) | (OF << 6)  | (BF << 4)| (DF << 3)  | (IF << 2) |  (ZF << 1) | CF;
         return (status);
+}
+
+void recount_flags(processor *Processor){
+
+        NF = S >> 7;
+        OF = (S >> 6) & 0x01;
+        BF = (S >> 4) & 0x01;
+        DF = (S >> 3) & 0x01;
+        IF = (S >> 2) & 0x01;
+        ZF = (S >> 1) & 0x01;
+        CF = S & 0x01;
+
 }
 uint8_t read_Byte (uint16_t Address){
 
@@ -594,6 +618,17 @@ void TSX (processor *Processor){
 
 }
 
+void RTI (processor *Processor){
+
+        S = pull_stack(Processor);
+        recount_flags(Processor);
+        uint8_t PCL = pull_stack(Processor);
+        uint8_t PCH = pull_stack(Processor);
+        PC = (PCH << 8) | PCL;
+
+}
+
+`
 
 
 
