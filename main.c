@@ -81,21 +81,14 @@ typedef struct
         uint8_t status;
         uint8_t pStack;
 
+
+        uint8_t flag_acc_adress;
+
         flags flags_now;
 
 }processor;
 
-uint8_t reset (processor *Processor){
 
-        uint8_t PCL = read_Byte(0xFFFC);
-        uint8_t PHL = read_Byte(0xFFFD);
-
-        PC = (PHL << 8) || PCL;
-
-        IF = 1;
-
-
-}
 
 uint8_t recount_status (processor *Processor){
 
@@ -123,6 +116,18 @@ uint8_t read_Byte (uint16_t Address){
 uint8_t write_Byte (uint16_t Address, uint8_t Byte){
 
         return 1;
+}
+
+uint8_t reset (processor *Processor){
+
+        uint8_t PCL = read_Byte(0xFFFC);
+        uint8_t PHL = read_Byte(0xFFFD);
+
+        PC = (PHL << 8) || PCL;
+
+        IF = 1;
+
+
 }
 
 uint8_t fetch_byte (processor *Processor){
@@ -199,6 +204,8 @@ uint16_t abs_index_x (processor *Processor){
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
         uint16_t adr = ((bah << 8 )| bal ) + X;
+        if (bal + X > 255)
+                CF = 1;
         return adr;
 
 }
@@ -208,6 +215,8 @@ uint16_t abs_index_y (processor *Processor){
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
         uint16_t adr = ((bah << 8 )| bal ) + Y;
+        if (bal + Y > 255)
+                CF = 1;
         return adr;
 
 }
@@ -222,6 +231,12 @@ uint16_t indirect_index (processor *Processor){
 
 
 
+}
+
+uint16_t acc_adress (processor *Processor)
+{
+        Processor->flag_acc_adress = 1;
+        return 0;
 }
 
 
@@ -628,11 +643,76 @@ void RTI (processor *Processor){
 
 }
 
-`
+void LSR (processor *Processor){
+
+        if (Processor->flag_acc_adress == 1) {
+
+                CF = A & 0x01;
+                A  = A >> 1;
+        }
+        else {
+
+                uint8_t data = read_Byte(ADDR);
+
+                CF = data & 0x01;
+                data = data >> 1;
+
+                write_Byte(ADDR, data);
+
+        }
+
+
+}
+
+
+void ASL (processor *Processor){
+
+        if (Processor->flag_acc_adress == 1) {
+
+                CF = A >> 7;
+                A  = A << 1;
+        }
+        else {
+
+                uint8_t data = read_Byte(ADDR);
+
+                CF = data >> 7;
+                data = data << 1;
+
+                write_Byte(ADDR, data);
+
+        }
+
+}
+
+
+void ROL (processor *Processor){
+
+        if (Processor->flag_acc_adress == 1) {
+
+                CF = A >> 7;
+                A  = (A << 1) | CF;
+        }
+        else {
+
+                uint8_t data = read_Byte(ADDR);
+
+                CF = data >> 7;
+                data = (data << 1) | CF;
+
+                write_Byte(ADDR, data);
+
+        }
+
+}
 
 
 
-void (*pWhatMode[256]) (processor *) = {BRK };
+
+
+
+
+//void (*pWhatMode[256]) (processor *) = {BRK };
 
 int main(){
 
