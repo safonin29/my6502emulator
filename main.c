@@ -649,6 +649,7 @@ void LSR (processor *Processor){
 
                 CF = A & 0x01;
                 A  = A >> 1;
+                check_n_z (Processor, A);
         }
         else {
 
@@ -656,7 +657,7 @@ void LSR (processor *Processor){
 
                 CF = data & 0x01;
                 data = data >> 1;
-
+                check_n_z (Processor, data);
                 write_Byte(ADDR, data);
 
         }
@@ -671,6 +672,7 @@ void ASL (processor *Processor){
 
                 CF = A >> 7;
                 A  = A << 1;
+                check_n_z (Processor, A);
         }
         else {
 
@@ -678,7 +680,7 @@ void ASL (processor *Processor){
 
                 CF = data >> 7;
                 data = data << 1;
-
+                check_n_z (Processor, data);
                 write_Byte(ADDR, data);
 
         }
@@ -688,10 +690,13 @@ void ASL (processor *Processor){
 
 void ROL (processor *Processor){
 
+
+
         if (Processor->flag_acc_adress == 1) {
 
                 CF = A >> 7;
                 A  = (A << 1) | CF;
+                check_n_z (Processor, A);
         }
         else {
 
@@ -699,6 +704,7 @@ void ROL (processor *Processor){
 
                 CF = data >> 7;
                 data = (data << 1) | CF;
+                check_n_z (Processor, data);
 
                 write_Byte(ADDR, data);
 
@@ -708,11 +714,75 @@ void ROL (processor *Processor){
 
 
 
+void ROR  (processor *Processor){
+
+
+
+        if (Processor->flag_acc_adress == 1) {
+
+                CF = A & 0x01;
+                A  = (A >> 1) | (CF << 7);
+                check_n_z (Processor, A);
+        }
+        else {
+
+                uint8_t data = read_Byte(ADDR);
+
+                CF = data & 0x01;
+                data = (data >> 1) | (CF << 7);
+                check_n_z (Processor, data);
+
+                write_Byte(ADDR, data);
+
+        }
+
+}
+
+
+void INC  (processor *Processor){
+
+        uint8_t data = read_Byte(ADDR);
+        data++;
+        check_n_z(Processor, data);
+        write_Byte(ADDR, data);
+
+}
+
+void DEC  (processor *Processor){
+
+        uint8_t data = read_Byte(ADDR);
+        data--;
+        check_n_z(Processor, data);
+        write_Byte(ADDR, data);
+
+}
+
+
+void NTG (processor *Processor){ // no opcode
+    return;
+
+
+}
 
 
 
 
-//void (*pWhatMode[256]) (processor *) = {BRK };
+void (*pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, ORA, ASL, NTG, PHP, ORA, ASL, NTG, NTG, ORA, ASL, NTG,
+                                        Bxx, ORA, NTG, NTG, NTG, ORA, ASL, NTG, CLC, ORA, NTG, NTG, NTG, ORA, ASL, NTG,
+                                        JSR, AND, NTG, NTG, BIT, AND, ROL, NTG, PLP, AND, ROL, NTG, BIT, AND, ROL, NTG,
+                                        Bxx, AND, NTG, NTG, NTG, AND, ROL, NTG, SEC, AND, NTG, NTG, NTG, AND, ROL, NTG,
+                                        RTI, EOR, NTG, NTG, NTG, EOR, LSR, NTG, PHA, EOR, LSR, NTG, JMP, EOR, LSR, NTG,
+                                        Bxx, EOR, NTG, NTG, NTG, EOR, LSR, NTG, CLI, EOR, NTG, NTG, NTG, EOR, LSR, NTG,
+                                        RTS, ADC, NTG, NTG, NTG, ADC, ROR, NTG, PLA, ADC, ROR, NTG, JMP, ADC, ROR, NTG,
+                                        Bxx, ADC, NTG, NTG, NTG, ADC, ROR, NTG, SEI, ADC, NTG, NTG, NTG, ADC, ROR, NTG,
+                                        NTG, STA, NTG, NTG, STY, STA, STX, NTG, DEY, NTG, TXA, NTG, STY, STA, STX, NTG,
+                                        Bxx, STA, NTG, NTG, STY, STA, STX, NTG, TYA, STA, TXS, NTG, NTG, STA, NTG, NTG,
+                                        LDY, LDA, LDX, NTG, LDY, LDA, LDX, NTG, TAY, LDA, TAX, NTG, LDY, LDA, LDX, NTG,
+                                        Bxx, LDA, NTG, NTG, LDY, LDA, LDX, NTG, CLV, LDA, TSX, NTG, LDY, LDA, LDX, NTG,
+                                        CPY, CMP, NTG, NTG, CPY, CMP, DEC, NTG, INY, CMP, DEX, NTG, CPY, CMP, DEC, NTG,
+                                        Bxx, CMP, NTG, NTG, NTG, CMP, DEC, NTG, CLD, CMP, NTG, NTG, NTG, CMP, DEC, NTG,
+                                        CPX, SBC, NTG, NTG, CPX, SBC, INC, NTG, INX, SBC, NTG, NTG, CPX, SBC, INC, NTG,
+                                        Bxx, SBC, NTG, NTG, NTG, SBC, INC, NTG, SED, SBC, NTG, NTG, NTG, SBC, INC, NTG  };
 
 int main(){
 
