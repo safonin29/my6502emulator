@@ -36,8 +36,8 @@
 
 #define INTERRUPT_PERIOD 120
 
-#define read_Byte(ADDRESS)  MEMADDR[ADDRESS]
-#define write_Byte(ADDRESS, DATA)  MEMADDR[ADDRESS] = DATA
+#define read_Byte(ADDRESS)  (Processor->memory_addr)[ADDRESS]
+#define write_Byte(ADDRESS,DATA)  (Processor->memory_addr)[ADDRESS]=DATA
 
 
 
@@ -144,9 +144,9 @@ uint8_t reset (processor *Processor){
 
 uint8_t fetch_byte (processor *Processor){
 
-        read_Byte(PC);
+        uint8_t data = read_Byte(PC);
         PC++;
-        return 1;
+        return data ;
 }
 
 uint8_t push_stack (processor *Processor, uint8_t Byte){
@@ -803,7 +803,7 @@ void NTG (processor *Processor){ // no opcode
 }
 
 uint16_t NOA (processor *Processor){ // no adressing
-    return;
+    return 0;
 
 
 }
