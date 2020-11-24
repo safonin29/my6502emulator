@@ -22,6 +22,8 @@
 #define IF Processor->flags_now.interrupt
 #define OF Processor->flags_now.overflow
 
+#define MEMADDR Processor->memory_addr
+
 #define BPL 0x10
 #define BMI 0x30
 #define BVC 0x50
@@ -30,6 +32,12 @@
 #define BCS 0xB0
 #define BNE 0xD0
 #define BEQ 0xF0
+
+
+#define INTERRUPT_PERIOD 120
+
+#define read_Byte(ADDRESS)  MEMADDR[ADDRESS]
+#define write_Byte(ADDRESS, DATA)  MEMADDR[ADDRESS] = DATA
 
 
 
@@ -70,7 +78,6 @@ typedef struct {
 typedef struct
 {
         uint8_t crrent_opcode; //
-        uint16_t memory;
         uint16_t address;       //
 
 
@@ -85,6 +92,8 @@ typedef struct
         uint8_t flag_acc_adress;
 
         flags flags_now;
+
+        uint8_t * memory_addr;
 
 }processor;
 
@@ -107,16 +116,17 @@ void recount_flags(processor *Processor){
         CF = S & 0x01;
 
 }
-uint8_t read_Byte (uint16_t Address){
+/*uint8_t read_Byte (uint16_t Address, uint8_t * memory_addr){
 
-        return 1;
-}
+        return  memory_addr[Address];
+}*/
 
 
-uint8_t write_Byte (uint16_t Address, uint8_t Byte){
+/*uint8_t write_Byte (uint16_t Address, uint8_t Byte, uint8_t * memory_addr){
 
-        return 1;
-}
+        memory_addr[Address] = Byte;
+        return 0;
+}*/
 
 uint8_t reset (processor *Processor){
 
@@ -126,6 +136,8 @@ uint8_t reset (processor *Processor){
         PC = (PHL << 8) || PCL;
 
         IF = 1;
+
+        return 0;
 
 
 }
@@ -154,12 +166,12 @@ uint8_t check_n_z (processor *Processor, uint8_t reg){
 
         NF = (reg >> 7) ? 1 : 0;
         ZF = (reg == 0) ? 1 : 0;
-        return;
+        return 0;
 
 }
 
 
-uint16_t index_indirect (processor *Processor){
+uint16_t INDX (processor *Processor){ // X-indexed, indirect
 
         PC = 0x0000 |  (fetch_byte(Processor) + X); // Fetch Bal, counter = BAL + X
         uint8_t ADL = fetch_byte(Processor);
@@ -169,13 +181,13 @@ uint16_t index_indirect (processor *Processor){
         return adr;
 
 }
-uint16_t implied(processor *Processor) {
+uint16_t IMP(processor *Processor) { // implied
 
         return PC;
 
 }
 
-uint16_t absolute (processor *Processor) {
+uint16_t ABS(processor *Processor) { //absolute
 
         uint8_t adl = fetch_byte(Processor);
         uint8_t ahl = fetch_byte(Processor);
@@ -184,7 +196,7 @@ uint16_t absolute (processor *Processor) {
 
 
 }
-uint16_t zero_page (processor *Processor){
+uint16_t ZP (processor *Processor){  // zero_page
 
         uint8_t adl = fetch_byte(Processor);
         uint16_t adr = 0 | adl;
@@ -193,13 +205,39 @@ uint16_t zero_page (processor *Processor){
 
 }
 
-uint16_t immediate (processor *Processor){
+uint16_t ZPX (processor *Processor) {
+
+        uint8_t adl = fetch_byte(Processor);
+        uint16_t adr = (0 | adl) + X;
+        return adr;
+
+
+}
+
+
+uint16_t ZPY (processor *Processor) {
+
+        uint8_t adl = fetch_byte(Processor);
+        uint16_t adr = (0 | adl) + Y;
+        return adr;
+
+
+}
+
+uint16_t IMM (processor *Processor){ // immediate
 
         uint16_t adr = PC++;
         return adr;
 }
 
-uint16_t abs_index_x (processor *Processor){
+uint16_t REL (processor *Processor){
+
+            uint16_t adr = PC + fetch_byte(Processor);
+            return (adr);
+
+}
+
+uint16_t ABSX (processor *Processor){ // absolute, X-indexed
 
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
@@ -210,7 +248,7 @@ uint16_t abs_index_x (processor *Processor){
 
 }
 
-uint16_t abs_index_y (processor *Processor){
+uint16_t ABSY (processor *Processor){ // absolute, Y-indexed
 
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
@@ -221,7 +259,7 @@ uint16_t abs_index_y (processor *Processor){
 
 }
 
-uint16_t indirect_index (processor *Processor){
+uint16_t INDY (processor *Processor){ 	// indirect, Y-indexed
 
         uint16_t ial  = 0 + fetch_byte(Processor);
         uint8_t bal = read_Byte(ial);
@@ -233,7 +271,7 @@ uint16_t indirect_index (processor *Processor){
 
 }
 
-uint16_t acc_adress (processor *Processor)
+uint16_t ACC (processor *Processor)
 {
         Processor->flag_acc_adress = 1;
         return 0;
@@ -764,6 +802,12 @@ void NTG (processor *Processor){ // no opcode
 
 }
 
+uint16_t NOA (processor *Processor){ // no adressing
+    return;
+
+
+}
+
 
 
 
@@ -784,11 +828,48 @@ void (*pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, ORA, ASL, NTG, 
                                         CPX, SBC, NTG, NTG, CPX, SBC, INC, NTG, INX, SBC, NTG, NTG, CPX, SBC, INC, NTG,
                                         Bxx, SBC, NTG, NTG, NTG, SBC, INC, NTG, SED, SBC, NTG, NTG, NTG, SBC, INC, NTG  };
 
+uint16_t (*pWhatAddress[256]) (processor *) = { IMP, INDX, NOA, NOA, NOA, ZP, ZP,  NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,
+                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                            ABS, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA,
+                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                            IMP, INDX, NOA, NOA, NOA, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA,
+                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                            IMP, INDX, NOA, NOA, NOA, ZP, ZP, NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,
+                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                            NOA, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, NOA, IMP, NOA, ABS, ABS, ABS, NOA,
+                                            REL, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, NOA, ABSX, ABSX, NOA,
+                                            IMM, INDX, IMM, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
+                                            REL, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, ABSX, ABSX, ABSY, NOA,
+                                            IMM, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
+                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                            IMM, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
+                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA };
+
 int main(){
 
-        flags crr_flags;
-        flags *p_crr_flags = &crr_flags;
-        p_crr_flags->negative = 1;
-        //      printf("%d", OF);
+        processor myProcessor;
+        processor * Processor = &myProcessor;
+        uint8_t Memory [0xFFFF];
+        MEMADDR = Memory;
+        reset(Processor);
+        uint8_t cycles_to_count = 0;
+        uint8_t cycles_for_interrupt = 0;
+        while (1)
+        {
+            if (cycles_to_count == 0) {
+                uint8_t data = read_Byte(PC);
+                ADDR = (*pWhatAddress[data])(Processor);
+                (*pWhatMode[data])(Processor);
+                cycles_to_count+=cycles[data];
+                cycles_to_count--;
+            }
+            else {
+                cycles_to_count--;
+            }
+            cycles_for_interrupt++;
+            if (cycles_for_interrupt == INTERRUPT_PERIOD)
+                cycles_for_interrupt = 0;
+        }
+
         return 0;
 }
