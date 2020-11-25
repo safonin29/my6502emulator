@@ -43,22 +43,22 @@
 
 uint8_t cycles [256] =
 {
-        7, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6, //0x
-        2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, //1x
-        6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6, //2x
-        2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, //3x
-        6, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 2, 3, 4, 6, 6, //4x
-        2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, //5x
-        6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6, //6x
-        2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, //7x
-        2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4, //8x
-        2, 6, 0, 6, 4, 4, 4, 4, 2, 5, 2, 5, 5, 5, 5, 5, //9x
-        2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4, //Ax
-        2, 5, 0, 5, 4, 4, 4, 4, 4, 2, 4, 4, 4, 4, 4, 4, //Bx
-        2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, //Cx
-        2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, //Dx
-        2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, //Ex
-        2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, //Fx
+        7, 6, 1, 1, 1, 3, 5, 1, 3, 2, 2, 1, 1, 4, 6, 1, //0x
+        2, 5, 1, 1, 1, 4, 6, 1, 2, 4, 2, 1, 4, 4, 7, 1, //1x
+        6, 6, 1, 1, 3, 3, 5, 1, 4, 2, 2, 1, 4, 4, 6, 1, //2x
+        2, 5, 1, 1, 1, 4, 6, 1, 2, 4, 2, 1, 4, 4, 7, 1, //3x
+        6, 6, 1, 1, 1, 3, 5, 1, 3, 2, 2, 1, 3, 4, 6, 1, //4x
+        2, 5, 1, 1, 1, 4, 6, 1, 2, 4, 2, 1, 4, 4, 7, 1, //5x
+        6, 6, 1, 1, 1, 3, 5, 1, 4, 2, 2, 1, 5, 4, 6, 1, //6x
+        2, 5, 1, 1, 1, 4, 6, 1, 2, 4, 2, 1, 4, 4, 7, 1, //7x
+        2, 6, 1, 1, 3, 3, 3, 1, 2, 2, 2, 1, 4, 4, 4, 1, //8x
+        2, 6, 1, 1, 4, 4, 4, 1, 2, 5, 2, 1, 5, 5, 5, 1, //9x
+        2, 6, 2, 1, 3, 3, 3, 1, 2, 2, 2, 1, 4, 4, 4, 1, //Ax
+        2, 5, 1, 1, 4, 4, 4, 1, 4, 2, 4, 1, 4, 4, 4, 1, //Bx
+        2, 6, 1, 1, 3, 3, 5, 1, 2, 2, 2, 1, 4, 4, 6, 1, //Cx
+        2, 5, 1, 1, 1, 4, 6, 1, 2, 4, 2, 1, 4, 4, 7, 1, //Dx
+        2, 6, 1, 1, 3, 3, 5, 1, 2, 2, 2, 1, 4, 4, 6, 1, //Ex
+        2, 5, 1, 1, 1, 4, 6, 1, 2, 4, 2, 1, 4, 4, 7, 1, //Fx
 
 };
 
@@ -91,6 +91,8 @@ typedef struct
 
         uint8_t flag_acc_adress;
 
+        uint8_t add_cycles;
+
         flags flags_now;
 
         uint8_t * memory_addr;
@@ -116,17 +118,7 @@ void recount_flags(processor *Processor){
         CF = S & 0x01;
 
 }
-/*uint8_t read_Byte (uint16_t Address, uint8_t * memory_addr){
 
-        return  memory_addr[Address];
-}*/
-
-
-/*uint8_t write_Byte (uint16_t Address, uint8_t Byte, uint8_t * memory_addr){
-
-        memory_addr[Address] = Byte;
-        return 0;
-}*/
 
 uint8_t reset (processor *Processor){
 
@@ -137,6 +129,10 @@ uint8_t reset (processor *Processor){
 
         IF = 1;
 
+        Processor->flag_acc_adress = 0;
+
+        Processor->add_cycles = 0;
+
         return 0;
 
 
@@ -146,7 +142,7 @@ uint8_t fetch_byte (processor *Processor){
 
         uint8_t data = read_Byte(PC);
         PC++;
-        return data ;
+        return data;
 }
 
 uint8_t push_stack (processor *Processor, uint8_t Byte){
@@ -232,8 +228,13 @@ uint16_t IMM (processor *Processor){ // immediate
 
 uint16_t REL (processor *Processor){
 
-            uint16_t adr = PC + fetch_byte(Processor);
-            return (adr);
+        uint8_t number = fetch_byte(Processor);
+        uint16_t adr = PC + number;
+        if ( (uint8_t) PC + number > 255)
+                Processor->add_cycles = 2;
+        else
+                Processor->add_cycles = 1;
+        return (adr);
 
 }
 
@@ -242,8 +243,10 @@ uint16_t ABSX (processor *Processor){ // absolute, X-indexed
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
         uint16_t adr = ((bah << 8 )| bal ) + X;
-        if (bal + X > 255)
+        if (bal + X > 255) {
                 CF = 1;
+                Processor->add_cycles+=1;
+        }
         return adr;
 
 }
@@ -253,18 +256,24 @@ uint16_t ABSY (processor *Processor){ // absolute, Y-indexed
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
         uint16_t adr = ((bah << 8 )| bal ) + Y;
-        if (bal + Y > 255)
+        if (bal + Y > 255) {
                 CF = 1;
+                Processor->add_cycles+=1;
+        }
         return adr;
 
 }
 
-uint16_t INDY (processor *Processor){ 	// indirect, Y-indexed
+uint16_t INDY (processor *Processor){   // indirect, Y-indexed
 
         uint16_t ial  = 0 + fetch_byte(Processor);
         uint8_t bal = read_Byte(ial);
         uint8_t bah = read_Byte(ial+1);
         uint16_t adr = (bah << 8 | bal) + Y;
+        if (bal + X > 255) {
+                CF = 1;
+                Processor->add_cycles+=1;
+        }
         return (adr);
 
 
@@ -307,6 +316,7 @@ void SED (processor *Processor){
 
 void STA (processor *Processor){
 
+        Processor->add_cycles = 0; // always penalty cycle
         write_Byte(ADDR, A);
 }
 
@@ -797,13 +807,13 @@ void DEC  (processor *Processor){
 
 
 void NTG (processor *Processor){ // no opcode
-    return;
+        return;
 
 
 }
 
 uint16_t NOA (processor *Processor){ // no adressing
-    return 0;
+        return 0;
 
 
 }
@@ -829,46 +839,47 @@ void (*pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, ORA, ASL, NTG, 
                                         Bxx, SBC, NTG, NTG, NTG, SBC, INC, NTG, SED, SBC, NTG, NTG, NTG, SBC, INC, NTG  };
 
 uint16_t (*pWhatAddress[256]) (processor *) = { IMP, INDX, NOA, NOA, NOA, ZP, ZP,  NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,
-                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
-                                            ABS, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA,
-                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
-                                            IMP, INDX, NOA, NOA, NOA, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA,
-                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
-                                            IMP, INDX, NOA, NOA, NOA, ZP, ZP, NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,
-                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
-                                            NOA, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, NOA, IMP, NOA, ABS, ABS, ABS, NOA,
-                                            REL, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, NOA, ABSX, ABSX, NOA,
-                                            IMM, INDX, IMM, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
-                                            REL, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, ABSX, ABSX, ABSY, NOA,
-                                            IMM, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
-                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
-                                            IMM, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
-                                            REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA };
+                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                                ABS, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA,
+                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                                IMP, INDX, NOA, NOA, NOA, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA,
+                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                                IMP, INDX, NOA, NOA, NOA, ZP, ZP, NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,
+                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                                NOA, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, NOA, IMP, NOA, ABS, ABS, ABS, NOA,
+                                                REL, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, NOA, ABSX, ABSX, NOA,
+                                                IMM, INDX, IMM, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
+                                                REL, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, ABSX, ABSX, ABSY, NOA,
+                                                IMM, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
+                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA,
+                                                IMM, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
+                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA };
 
 int main(){
 
         processor myProcessor;
         processor * Processor = &myProcessor;
+
         uint8_t Memory [0xFFFF];
         MEMADDR = Memory;
+
         reset(Processor);
+
         uint8_t cycles_to_count = 0;
         uint8_t cycles_for_interrupt = 0;
         while (1)
         {
-            if (cycles_to_count == 0) {
-                uint8_t data = read_Byte(PC);
-                ADDR = (*pWhatAddress[data])(Processor);
-                (*pWhatMode[data])(Processor);
-                cycles_to_count+=cycles[data];
+                if (cycles_to_count == 0) {
+                        OPCODE = fetch_byte(Processor);
+                        ADDR = (*pWhatAddress[OPCODE])(Processor);
+                        (*pWhatMode[OPCODE])(Processor);
+                        cycles_to_count=cycles[OPCODE] + Processor->add_cycles;
+                        Processor->add_cycles = 0;
+                }
                 cycles_to_count--;
-            }
-            else {
-                cycles_to_count--;
-            }
-            cycles_for_interrupt++;
-            if (cycles_for_interrupt == INTERRUPT_PERIOD)
-                cycles_for_interrupt = 0;
+                cycles_for_interrupt++;
+                if (cycles_for_interrupt == INTERRUPT_PERIOD)
+                        cycles_for_interrupt = 0;
         }
 
         return 0;
