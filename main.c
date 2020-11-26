@@ -18,7 +18,8 @@
 #define NF Processor->flags_now.negative
 #define ZF Processor->flags_now.zero
 #define DF Processor->flags_now.decimal
-#define BF Processor->flags_now.brk
+#define BF1 Processor->flags_now.brk1
+#define BF2 Processor->flags_now.brk2
 #define IF Processor->flags_now.interrupt
 #define OF Processor->flags_now.overflow
 
@@ -34,7 +35,7 @@
 #define BEQ 0xF0
 
 
-#define INTERRUPT_PERIOD 750
+#define INTERRUPT_PERIOD 100000
 
 #define read_Byte(ADDRESS)  (Processor->memory_addr)[ADDRESS]
 #define write_Byte(ADDRESS,DATA)  (Processor->memory_addr)[ADDRESS]=DATA
@@ -63,11 +64,14 @@ uint8_t cycles [256] =
 };
 
 
+uint8_t stop = 0;
+
 typedef struct {
 
         uint8_t negative;
         uint8_t overflow;
-        uint8_t brk;
+        uint8_t brk1;
+        uint8_t brk2;
         uint8_t decimal;
         uint8_t interrupt;
         uint8_t zero;
@@ -103,7 +107,7 @@ typedef struct
 
 uint8_t recount_status (processor *Processor){
 
-        uint8_t status = (NF << 7) | (OF << 6)  | (BF << 4)| (DF << 3)  | (IF << 2) |  (ZF << 1) | CF;
+        uint8_t status = (NF << 7) | (OF << 6)  | (BF1 << 5) | (BF2 << 4)| (DF << 3)  | (IF << 2) |  (ZF << 1) | CF;
         return (status);
 }
 
@@ -111,7 +115,8 @@ void recount_flags(processor *Processor){
 
         NF = S >> 7;
         OF = (S >> 6) & 0x01;
-        BF = (S >> 4) & 0x01;
+        BF1 = (S >> 5) & 0x01;
+        BF2 = (S >> 4) & 0x01;
         DF = (S >> 3) & 0x01;
         IF = (S >> 2) & 0x01;
         ZF = (S >> 1) & 0x01;
@@ -162,14 +167,13 @@ uint8_t fetch_byte (processor *Processor){
 
 uint8_t push_stack (processor *Processor, uint8_t Byte){
 
-        write_Byte(0x0100 + SP, Byte);
-        SP--;
+        write_Byte(0x0100 | SP--, Byte);
         return 1;
 }
 
 uint8_t pull_stack (processor *Processor){
 
-        return (read_Byte(0x0100 + SP++));
+        return (read_Byte(0x0100 + ++SP));
 }
 //Adressing modes
 
@@ -244,6 +248,13 @@ uint16_t IMM (processor *Processor){ // immediate
 
 uint16_t REL (processor *Processor){
 
+        uint8_t adl = fetch_byte(Processor);
+        uint8_t adh = fetch_byte(Processor);
+        uint16_t Adr = (adh << 8 )| adl;
+        adl = read_Byte(Adr);
+        adh = read_Byte(Adr+1);
+        Adr = (adh << 8 )| adl;
+        return (Adr);
 
 }
 
@@ -289,6 +300,22 @@ uint16_t INDY (processor *Processor){   // indirect, Y-indexed
 
 }
 
+uint16_t IND (processor *Processor){   // indirect, Y-indexed
+
+        uint16_t ial  = 0 + fetch_byte(Processor);
+        uint8_t bal = read_Byte(ial);
+        uint8_t bah = read_Byte(ial+1);
+        uint16_t adr = (bah << 8 | bal) + Y;
+        if (bal + X > 255) {
+                CF = 1;
+                Processor->add_cycles+=1;
+        }
+        return (adr);
+
+
+
+}
+
 uint16_t ACC (processor *Processor)
 {
         Processor->flag_acc_adress = 1;
@@ -301,10 +328,13 @@ void BRK (processor *Processor){
         fetch_byte(Processor); // fetch opcode and discard
         push_stack (Processor, (PC >> 8)); // PCH
         push_stack (Processor, PC); // PCL
-        BF = 1;
+        BF1 = 1;
+        BF2 = 1;
         S = recount_status(Processor);
         push_stack(Processor, S);
-        //fetch pcl and pch
+        uint8_t bal = read_Byte(0xFFFE);
+        uint8_t bah = read_Byte(0xFFFF);
+        PC = (bah << 8) | bal;
 
 }
 
@@ -381,9 +411,9 @@ void ADC (processor *Processor){
 void SBC (processor *Processor){
         uint8_t data = read_Byte(ADDR);
         if (DF == 0) {
-                uint16_t sum = ~data + CF + A;
+                uint16_t sum = (uint8_t)(~data) + CF + A;
                 uint8_t sign_acc_bef= A >> 7;
-                uint8_t sign_data = ~data >> 7;
+                uint8_t sign_data = (uint8_t)(~data) >> 7;
                 CF = (sum > 255) ? 1 : 0;
                 A = sum;
                 uint8_t sign_acc_aft = A >> 7;
@@ -522,7 +552,7 @@ void CMP (processor *Processor)
         uint8_t count = read_Byte(ADDR);
         ZF = (count == A) ? 1 : 0;
         CF = (count <= A) ? 1 : 0;
-        NF = ((A + ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
+        NF = ((A + (uint8_t)(~count) + 1) >> 7 == 1 ) ? 1 : 0;
 
 }
 
@@ -538,7 +568,6 @@ void LDX (processor * Processor){
 
         uint8_t data = read_Byte(ADDR);
         X = data;
-        printf("X %04X\n", X);
         check_n_z(Processor, X);
         return;
 
@@ -605,15 +634,15 @@ void CPX (processor *Processor){
         uint8_t count = read_Byte(ADDR);
         ZF = (count == X) ? 1 : 0;
         CF = (count <= X) ? 1 : 0;
-        NF = ((X + ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
+        NF = ((X + (uint8_t)(~count) + 1) >> 7 == 1 ) ? 1 : 0; // check later
 
 }
 void CPY (processor *Processor){
 
         uint8_t count = read_Byte(ADDR);
-        ZF = (count == X) ? 1 : 0;
-        CF = (count <= X) ? 1 : 0;
-        NF = ((Y + ~count + 1) >> 7 == 1 ) ? 1 : 0; // check later
+        ZF = (count == Y) ? 1 : 0;
+        CF = (count <= Y) ? 1 : 0;
+        NF = ((Y + (uint8_t)(~count) + 1) >> 7 == 1 ) ? 1 : 0; // check later
 
 }
 
@@ -664,7 +693,8 @@ void JSR (processor *Processor){
 
 void PHP (processor *Processor){
 
-
+        BF1 = 1;
+        BF2 = 1;
         S = recount_status(Processor);
         push_stack(Processor, S);
         return;
@@ -674,6 +704,7 @@ void PLP (processor *Processor){
 
 
         S = pull_stack(Processor);
+        recount_flags(Processor);
         return;
 }
 
@@ -878,23 +909,23 @@ void (*pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, ORA, ASL, NTG, 
                                         CPX, SBC, NTG, NTG, CPX, SBC, INC, NTG, INX, SBC, NTG, NTG, CPX, SBC, INC, NTG,
                                         Bxx, SBC, NTG, NTG, NTG, SBC, INC, NTG, SED, SBC, NTG, NTG, NTG, SBC, INC, NTG  };
 
-//   x0    x1   x2   x3  x4   x5  x6    x7  x8    x9  x10  x11  x12  x13  x14  x15
+//   x0    x1   x2   x3  x4   x5  x6    x7  x8    x9  xA   xB   xC   xD  xE  xF
 uint16_t (*pWhatAddress[256]) (processor *) = { IMP, INDX, NOA, NOA, NOA, ZP, ZP,  NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,     // 0x
-                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 1x
+                                                NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 1x
                                                 ABS, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA,       // 2x
-                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 3x
+                                                NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 3x
                                                 IMP, INDX, NOA, NOA, NOA, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA,      // 4x
-                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 5x
-                                                IMP, INDX, NOA, NOA, NOA, ZP, ZP, NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,      // 6x
-                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 7x
+                                                NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 5x
+                                                IMP, INDX, NOA, NOA, NOA, ZP, ZP, NOA, IMP, IMM, ACC, NOA, REL, ABS, ABS, NOA,      // 6x
+                                                NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 7x
                                                 NOA, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, NOA, IMP, NOA, ABS, ABS, ABS, NOA,       // 8x
-                                                REL, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, NOA, ABSX, ABSX, NOA, // 9x
+                                                NOA, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, NOA, ABSX, ABSX, NOA, // 9x
                                                 IMM, INDX, IMM, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,       // Ax
-                                                REL, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, ABSX, ABSX, ABSY, NOA, // Bx
+                                                NOA, INDY, NOA, NOA, ZPX, ZPX, ZPY, NOA, IMP, ABSY, IMP, NOA, ABSX, ABSX, ABSY, NOA, // Bx
                                                 IMM, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,       // Cx
-                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // Dx
+                                                NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // Dx
                                                 IMM, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, IMP, NOA, ABS, ABS, ABS, NOA,
-                                                REL, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA };
+                                                NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA };
 
 int main(){
 
@@ -910,10 +941,9 @@ int main(){
 
         PC = 0x0400;
 
-        uint8_t stop = 0;
 
         uint8_t cycles_to_count = 0;
-        uint16_t cycles_for_interrupt = 0;
+        uint32_t cycles_for_interrupt = 0;
         while (1)
         {
                 if (cycles_to_count == 0) {
