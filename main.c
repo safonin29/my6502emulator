@@ -34,8 +34,8 @@
 #define BNE 0xD0
 #define BEQ 0xF0
 
-
-#define INTERRUPT_PERIOD 100000000
+#define INTERRUPT_PERIOD1 96233500
+#define INTERRUPT_PERIOD2 96307500
 
 #define read_Byte(ADDRESS)  (Processor->memory_addr)[ADDRESS]
 #define write_Byte(ADDRESS,DATA)  (Processor->memory_addr)[ADDRESS]=DATA
@@ -64,7 +64,7 @@ uint8_t cycles [256] =
 };
 
 
-uint8_t stop = 0;
+uint8_t stop = 1;
 
 typedef struct {
 
@@ -166,8 +166,7 @@ uint8_t reset (processor *Processor){
 
 uint8_t fetch_byte (processor *Processor){
 
-        uint8_t data = read_Byte(PC);
-        PC++;
+        uint8_t data = read_Byte(PC++);
         return data;
 }
 
@@ -211,46 +210,34 @@ uint16_t ABS(processor *Processor) { //absolute
 
         uint8_t adl = fetch_byte(Processor);
         uint8_t ahl = fetch_byte(Processor);
-        uint16_t Adr = (ahl << 8 )| adl;
-        return Adr;
+        return (ahl << 8 | adl);
 
 
 }
 uint16_t ZP (processor *Processor){  // zero_page
 
-        uint8_t adl = fetch_byte(Processor);
-        uint16_t adr = 0x00FF & adl;
-        return adr;
+        return (0x00FF & fetch_byte(Processor));
 
 
 }
 
 uint16_t ZPX (processor *Processor) {
 
-        uint8_t adl = fetch_byte(Processor);
-        uint8_t data = adl + X;
-        uint16_t adr = 0x00FF & data;
-        return adr;
-
-
+        return( 0x00FF & (fetch_byte(Processor) + X));
 }
 
 
 uint16_t ZPY (processor *Processor) {
 
-        uint8_t adl = fetch_byte(Processor);
-        uint8_t data = adl + Y;
-        uint16_t adr = 0x00FF & data;
-        return adr;
+        return  (0x00FF & (fetch_byte(Processor) + Y));
 
 
 }
 
 uint16_t IMM (processor *Processor){ // immediate
 
-        uint16_t adr = PC;
-        PC++;
-        return adr;
+        return (PC++);
+
 }
 
 uint16_t REL (processor *Processor){
@@ -260,8 +247,7 @@ uint16_t REL (processor *Processor){
         uint16_t Adr = (adh << 8 )| adl;
         adl = read_Byte(Adr);
         adh = read_Byte(Adr+1);
-        Adr = (adh << 8 )| adl;
-        return (Adr);
+        return (adh << 8 | adl);
 
 }
 
@@ -270,11 +256,9 @@ uint16_t ABSX (processor *Processor){ // absolute, X-indexed
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
         uint16_t adr = ((bah << 8 )| bal ) + X;
-        if (bal + X > 255) {
-                //       CF = 1;
+        if (bal + X > 255)
                 Processor->add_cycles+=1;
-        }
-        return adr;
+        return ((bah << 8 | bal ) + X);
 
 }
 
@@ -283,10 +267,8 @@ uint16_t ABSY (processor *Processor){ // absolute, Y-indexed
         uint8_t bal = fetch_byte(Processor);
         uint8_t bah = fetch_byte(Processor);
         uint16_t adr = ((bah << 8 )| bal ) + Y;
-        if (bal + Y > 255) {
-                //        CF = 1;
+        if (bal + Y > 255)
                 Processor->add_cycles+=1;
-        }
         return adr;
 
 }
@@ -297,11 +279,9 @@ uint16_t INDY (processor *Processor){   // indirect, Y-indexed
         uint8_t bal = read_Byte(ial);
         uint8_t bah = read_Byte(ial+1);
         uint16_t adr = (bah << 8 | bal) + Y;
-        if (bal + Y > 255) {
-                //             CF = 1;
+        if (bal + Y > 255)
                 Processor->add_cycles+=1;
-        }
-        return (adr);
+        return ((bah << 8 | bal) + Y);
 
 
 
@@ -376,28 +356,33 @@ void ADC (processor *Processor){
         if (DF == 0) {
 
                 uint16_t sum = A + data + CF;
-                uint8_t sign_acc_bef= 0x01 & (A >> 7);
-                uint8_t sign_data = 0x01 & (data >> 7);
-                A = (uint8_t)sum;
-                uint8_t sign_acc_aft = 0x01 & (sum >> 7);
+                uint8_t sign_acc_bef= A >> 7;
+                uint8_t sign_data = data >> 7;
+                A = sum;
+                uint8_t sign_acc_aft = sum >> 7;
                 OF= (((inv_bit(sign_acc_bef)&inv_bit(sign_data)&sign_acc_aft)|(sign_acc_bef&sign_data&inv_bit(sign_acc_aft))) == 1) ? 1 : 0; //check later
                 CF = (sum > 255) ? 1 : 0;
         }
         else
         {
                 uint8_t l_byte = (A & 0x0F) + (data & 0x0F) + CF;
-                uint8_t carry_dec;
+                uint8_t carry_dec = 0;
                 if (l_byte > 9) {
-                        l_byte = l_byte-10;
+                        l_byte -= 10;
                         carry_dec = 1;
                 }
                 uint8_t h_byte = (A >> 4) + (data >> 4) + carry_dec;
                 if (h_byte > 9) {
-                        h_byte = h_byte-10;
+                        h_byte -= 10;
                         CF = 1;
                 }
+                else
+                        CF = 0;
 
                 A = (h_byte << 4) | l_byte;
+
+
+
         }
         check_n_z(Processor, A);
 
@@ -405,24 +390,27 @@ void ADC (processor *Processor){
 }
 
 void SBC (processor *Processor){
+
         uint8_t data = read_Byte(ADDR);
         if (DF == 0) {
                 uint16_t sum = (uint8_t)(~data)  + CF + A;
                 uint8_t sign_acc_bef= A >> 7;
-                uint8_t sign_data = (uint8_t)(~data) >> 7;
+                uint8_t sign_data = 0x01 & ((uint8_t)(~data) >> 7);
                 CF = (sum > 255) ? 1 : 0;
                 A = sum;
-                uint8_t sign_acc_aft = sum >> 7;
+                uint8_t sign_acc_aft = 0x01 & (sum >> 7);
                 OF= (((inv_bit(sign_acc_bef)&inv_bit(sign_data)&sign_acc_aft)|(sign_acc_bef&sign_data&inv_bit(sign_acc_aft))) == 1) ? 1 : 0; //check later
         }
         else {
-                uint16_t l_byte = (A & 0x0F) + (data & 0x0F) + CF;
+                uint8_t l_byte = (A & 0x0F) + (~(data & 0x0F) + CF);
                 uint8_t carry_dec;
-                carry_dec = (l_byte > 255) ? 1 : 0;
-                l_byte = ~(l_byte - 1);
-                uint16_t h_byte = (A >> 4) + (data >> 4) + carry_dec;
-                CF = (h_byte > 255) ? 1 : 0;
-                h_byte = ~(h_byte - 1);
+                carry_dec = ((l_byte >> 7) == 1) ? 0 : 1;
+                if (carry_dec == 0)
+                    l_byte = 0x0A + l_byte;
+                uint8_t h_byte = (A >> 4) + ~((data >> 4) & 0x0F) + carry_dec;
+                CF = ((h_byte >> 7) == 1) ? 0 : 1;
+                if (CF == 0)
+                    h_byte = 0x0A + h_byte;
                 A= (h_byte << 4) | l_byte; // check later
         }
 
@@ -433,7 +421,7 @@ void SBC (processor *Processor){
 void AND (processor *Processor){
 
         uint8_t data = read_Byte(ADDR);
-        A = A & data;
+        A &= data;
         check_n_z(Processor, A);
         return;
 
@@ -441,7 +429,7 @@ void AND (processor *Processor){
 
 void ORA (processor *Processor){
 
-        A = A | read_Byte(ADDR);
+        A |= read_Byte(ADDR);
         check_n_z(Processor, A);
         return;
 
@@ -449,7 +437,7 @@ void ORA (processor *Processor){
 
 void EOR (processor *Processor){
 
-        A = A ^ read_Byte(ADDR);
+        A ^= read_Byte(ADDR);
         check_n_z(Processor, A);
 
 }
@@ -564,8 +552,7 @@ void BIT (processor *Processor){
 
 void LDX (processor * Processor){
 
-        uint8_t data = read_Byte(ADDR);
-        X = data;
+        X = read_Byte(ADDR);
         check_n_z(Processor, X);
         return;
 
@@ -573,8 +560,7 @@ void LDX (processor * Processor){
 
 void LDY (processor * Processor){
 
-        uint8_t data = read_Byte(ADDR);
-        Y = data;
+        Y = read_Byte(ADDR);
         check_n_z(Processor, Y);
         return;
 }
@@ -595,8 +581,7 @@ void STY (processor * Processor){
 
 void INX (processor * Processor){
 
-        X++;
-        check_n_z(Processor, X);
+        check_n_z(Processor, ++X);
         return;
 
 }
@@ -604,16 +589,14 @@ void INX (processor * Processor){
 
 void INY (processor * Processor){
 
-        Y++;
-        check_n_z(Processor, Y);
+        check_n_z(Processor, ++Y);
         return;
 
 }
 
 void DEX (processor * Processor){
 
-        X--;
-        check_n_z(Processor, X);
+        check_n_z(Processor, --X);
         return;
 
 }
@@ -621,8 +604,7 @@ void DEX (processor * Processor){
 
 void DEY (processor * Processor){
 
-        Y--;
-        check_n_z(Processor, Y);
+        check_n_z(Processor, --Y);
         return;
 
 }
@@ -967,10 +949,13 @@ int main(){
                 }
                 cycles_to_count--;
                 cycles_for_interrupt++;
-                if (cycles_for_interrupt == INTERRUPT_PERIOD) {
-                        cycles_for_interrupt = 0;
-                        stop = 1;
+                if ((cycles_for_interrupt > INTERRUPT_PERIOD1) & (cycles_for_interrupt < INTERRUPT_PERIOD2))  {
+                    //    cycles_for_interrupt = 0;
+                        stop = 0;
                 }
+                else
+                        stop = 1;
+
         }
 
         return 0;
