@@ -64,11 +64,13 @@ void ADC (processor *Processor){
 
                 uint16_t sum = A + data + CF;
                 uint8_t sign_acc_bef= A >> 7;
-                uint8_t sign_data = data >> 7;
                 A = sum;
-                uint8_t sign_acc_aft = sum >> 7;
-                OF= (((inv_bit(sign_acc_bef)&inv_bit(sign_data)&sign_acc_aft)|(sign_acc_bef&sign_data&inv_bit(sign_acc_aft))) == 1) ? 1 : 0; //check later
-                CF = (sum > 255) ? 1 : 0;
+                uint8_t sign_acc_aft = A >> 7;
+               if ((sign_acc_bef ^  (data >> 7))  == 0)
+                    OF = (sign_acc_aft != sign_acc_bef )  ? 1: 0;
+                else
+                    OF = 0;
+                CF = (sum >>  8) ? 1 : 0;
         }
         else
         {
@@ -102,20 +104,23 @@ void SBC (processor *Processor){
         if (DF == 0) {
                 uint16_t sum = (uint8_t)(~data)  + CF + A;
                 uint8_t sign_acc_bef= A >> 7;
-                uint8_t sign_data = 0x01 & ((uint8_t)(~data) >> 7);
-                CF = (sum > 255) ? 1 : 0;
+                uint8_t sign_data = 0x01 & ((~data) >> 7);
+                CF = (sum >> 8) ? 1 : 0;
                 A = sum;
                 uint8_t sign_acc_aft = 0x01 & (sum >> 7);
-                OF= (((inv_bit(sign_acc_bef)&inv_bit(sign_data)&sign_acc_aft)|(sign_acc_bef&sign_data&inv_bit(sign_acc_aft))) == 1) ? 1 : 0; //check later
+                if ((sign_acc_bef ^  sign_data)  == 0)
+                    OF = (sign_acc_aft != sign_acc_bef )  ? 1: 0;
+                else
+                    OF = 0;
         }
         else {
                 uint8_t l_byte = (A & 0x0F) + (~(data & 0x0F) + CF);
                 uint8_t carry_dec;
-                carry_dec = ((l_byte >> 7) == 1) ? 0 : 1;
+                carry_dec = (l_byte >> 7) ? 0 : 1;
                 if (carry_dec == 0)
                     l_byte = 0x0A + l_byte;
                 uint8_t h_byte = (A >> 4) + ~((data >> 4) & 0x0F) + carry_dec;
-                CF = ((h_byte >> 7) == 1) ? 0 : 1;
+                CF = (h_byte >> 7) ? 0 : 1;
                 if (CF == 0)
                     h_byte = 0x0A + h_byte;
                 A= (h_byte << 4) | l_byte; // check later

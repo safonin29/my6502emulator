@@ -2,6 +2,7 @@
 #define VARIABLES_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 #define A Processor->accumulator
 #define X Processor->x_register
