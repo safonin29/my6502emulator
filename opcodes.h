@@ -51,8 +51,4 @@ void ROR (processor *Processor);
 void INC (processor *Processor);
 void DEC (processor *Processor);
 void NTG (processor *Processor);
-uint16_t NOA (processor *Processor);
 #endif
-
-
-

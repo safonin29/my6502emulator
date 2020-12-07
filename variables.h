@@ -75,7 +75,7 @@ typedef struct
         uint8_t pStack;
 
 
-        uint8_t flag_acc_adress;
+        uint8_t flag_acc_address;
 
         uint8_t add_cycles;
 
@@ -89,9 +89,6 @@ typedef struct
 
 uint8_t recount_status (processor *Processor);
 void recount_flags(processor *Processor);
-uint8_t inv_bit (uint8_t data);
-void Load (uint8_t * memory);
-uint8_t reset (processor *Processor);
 uint8_t fetch_byte (processor *Processor);
 uint8_t push_stack (processor *Processor, uint8_t Byte);
 uint8_t pull_stack (processor *Processor);
