@@ -61,8 +61,7 @@ typedef struct {
 }flags;
 
 
-typedef struct
-{
+typedef struct {
         uint8_t crrent_opcode; //
         uint16_t address;       //
 

@@ -28,6 +28,7 @@ void LDA (processor *Processor){
         check_n_z(Processor, A);
         return;
 }
+
 void CLC (processor *Processor){
 
         CF = 0;
@@ -177,7 +178,6 @@ void SEI (processor *Processor){
 
 }
 
-
 void CLI (processor *Processor){
 
         IF = 0;
@@ -241,8 +241,7 @@ void Bxx (processor *Processor){
         return;
 }
 
-void CMP (processor *Processor)
-{
+void CMP (processor *Processor){
         uint8_t acc = A;
         uint8_t count = read_Byte(ADDR);
         ZF = (count == acc) ? 1 : 0;
@@ -260,7 +259,7 @@ void BIT (processor *Processor){
         return;
 }
 
-void LDX (processor * Processor){
+void LDX (processor *Processor){
 
         X = read_Byte(ADDR);
         check_n_z(Processor, X);
@@ -268,57 +267,54 @@ void LDX (processor * Processor){
 
 }
 
-void LDY (processor * Processor){
+void LDY (processor *Processor){
 
         Y = read_Byte(ADDR);
         check_n_z(Processor, Y);
         return;
 }
 
-void STX (processor * Processor){
+void STX (processor *Processor){
 
 
         write_Byte(ADDR, X);
 
 }
 
-void STY (processor * Processor){
+void STY (processor *Processor){
 
 
         write_Byte(ADDR, Y);
 
 }
 
-void INX (processor * Processor){
+void INX (processor *Processor){
 
         check_n_z(Processor, ++X);
         return;
 
 }
 
-
-void INY (processor * Processor){
+void INY (processor *Processor){
 
         check_n_z(Processor, ++Y);
         return;
 
 }
 
-void DEX (processor * Processor){
+void DEX (processor *Processor){
 
         check_n_z(Processor, --X);
         return;
 }
 
-
-void DEY (processor * Processor){
+void DEY(processor  *Processor){
 
         check_n_z(Processor, --Y);
         return;
 }
 
 void CPX (processor *Processor){
-
         uint8_t x_register = X;
         uint8_t count = read_Byte(ADDR);
         ZF = (count == x_register) ? 1 : 0;
@@ -327,6 +323,7 @@ void CPX (processor *Processor){
         return;
 
 }
+
 void CPY (processor *Processor){
 
         uint8_t y_register = Y;
@@ -376,7 +373,6 @@ void JSR (processor *Processor){
         return;
 }
 
-
 void PHP (processor *Processor){
 
         BF1 = 1;
@@ -397,7 +393,7 @@ void PLP (processor *Processor){
         return;
 }
 
-void RTS (processor *Processor) {
+void RTS (processor *Processor){
 
 
         uint8_t PCL = pull_stack(Processor);
@@ -465,7 +461,6 @@ void LSR (processor *Processor){
         return;
 }
 
-
 void ASL (processor *Processor){
 
         if (Processor->flag_acc_address == 1) {
@@ -487,7 +482,6 @@ void ASL (processor *Processor){
         }
         return;
 }
-
 
 void ROL (processor *Processor){
 
@@ -516,9 +510,7 @@ void ROL (processor *Processor){
         return;
 }
 
-
-
-void ROR  (processor *Processor){
+void ROR (processor *Processor){
 
         if (Processor->flag_acc_address == 1) {
 
@@ -542,8 +534,7 @@ void ROR  (processor *Processor){
         return;
 }
 
-
-void INC  (processor *Processor){
+void INC (processor *Processor){
 
         uint16_t address = ADDR;
         uint8_t data = read_Byte(address);
@@ -553,7 +544,7 @@ void INC  (processor *Processor){
         return;
 }
 
-void DEC  (processor *Processor){
+void DEC (processor *Processor){
 
         uint16_t address = ADDR;
         uint8_t data = read_Byte(address);
@@ -562,7 +553,6 @@ void DEC  (processor *Processor){
         write_Byte(address, data);
         return;
 }
-
 
 void NTG (processor *Processor){ // no opcode
         return;
