@@ -7,5 +7,5 @@ This is 8-bit CPU emulator written in C.
 * Decimal mode
 * 100 percent cycle accuracy
 
-Tested extensively with  [Klaus2m5 6502 functional tests] (https://github.com/Klaus2m5/6502_65C02_functional_tests)
+Tested extensively with  [I'm an inline-style link](https://www.google.com)
 
