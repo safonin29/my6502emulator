@@ -225,7 +225,7 @@ uint16_t NOA (processor *Processor){ // no adressing
 }
 
 
-static void (*pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, ORA, ASL, NTG, PHP, ORA, ASL, NTG, NTG, ORA, ASL, NTG,
+static void  (* const pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, ORA, ASL, NTG, PHP, ORA, ASL, NTG, NTG, ORA, ASL, NTG,
                                                Bxx, ORA, NTG, NTG, NTG, ORA, ASL, NTG, CLC, ORA, NTG, NTG, NTG, ORA, ASL, NTG,
                                                JSR, AND, NTG, NTG, BIT, AND, ROL, NTG, PLP, AND, ROL, NTG, BIT, AND, ROL, NTG,
                                                Bxx, AND, NTG, NTG, NTG, AND, ROL, NTG, SEC, AND, NTG, NTG, NTG, AND, ROL, NTG,
@@ -242,8 +242,8 @@ static void (*pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, ORA, ASL
                                                CPX, SBC, NTG, NTG, CPX, SBC, INC, NTG, INX, SBC, NTG, NTG, CPX, SBC, INC, NTG,
                                                Bxx, SBC, NTG, NTG, NTG, SBC, INC, NTG, SED, SBC, NTG, NTG, NTG, SBC, INC, NTG  };
 
-//   x0    x1   x2   x3  x4   x5  x6    x7  x8    x9  xA   xB   xC   xD  xE  xF
-static uint16_t (*pWhatAddress[256]) (processor *) = { IMP, INDX, NOA, NOA, NOA, ZP, ZP,  NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,     // 0x
+                                                    //   x0    x1   x2   x3  x4   x5  x6    x7  x8    x9  xA   xB   xC   xD  xE  xF
+static uint16_t (* const pWhatAddress[256]) (processor *) = { IMP, INDX, NOA, NOA, NOA, ZP, ZP,  NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,     // 0x
                                                        NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 1x
                                                        ABS, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA, // 2x
                                                        NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 3x
