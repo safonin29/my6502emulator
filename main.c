@@ -9,7 +9,7 @@
 
 
 
-uint8_t cycles [256] =
+uint8_t cycles [256] = // cycles numbers according to each opcode
 {
         7, 6, 1, 1, 1, 3, 5, 1, 3, 2, 2, 1, 1, 4, 6, 1, //0x
         2, 5, 1, 1, 1, 4, 6, 1, 2, 4, 2, 1, 4, 4, 7, 1, //1x
@@ -32,7 +32,7 @@ uint8_t cycles [256] =
 
 uint8_t stop = 1;
 
-uint8_t recount_status (processor *Processor){
+uint8_t recount_status (processor *Processor){ 
 
         uint8_t status = (NF << 7) | (OF << 6)  | (BF1 << 5) | (BF2 << 4)| (DF << 3)  | (IF << 2) |  (ZF << 1) | CF;
         return (status);
@@ -225,7 +225,7 @@ uint16_t NOA (processor *Processor){ // no adressing
 }
 
 
-static void  (* const pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, ORA, ASL, NTG, PHP, ORA, ASL, NTG, NTG, ORA, ASL, NTG,
+static void  (* const pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, ORA, ASL, NTG, PHP, ORA, ASL, NTG, NTG, ORA, ASL, NTG, // all adressing modes
                                                Bxx, ORA, NTG, NTG, NTG, ORA, ASL, NTG, CLC, ORA, NTG, NTG, NTG, ORA, ASL, NTG,
                                                JSR, AND, NTG, NTG, BIT, AND, ROL, NTG, PLP, AND, ROL, NTG, BIT, AND, ROL, NTG,
                                                Bxx, AND, NTG, NTG, NTG, AND, ROL, NTG, SEC, AND, NTG, NTG, NTG, AND, ROL, NTG,
@@ -243,7 +243,7 @@ static void  (* const pWhatMode[256]) (processor *) = {BRK, ORA, NTG, NTG, NTG, 
                                                Bxx, SBC, NTG, NTG, NTG, SBC, INC, NTG, SED, SBC, NTG, NTG, NTG, SBC, INC, NTG  };
 
                                                     //   x0    x1   x2   x3  x4   x5  x6    x7  x8    x9  xA   xB   xC   xD  xE  xF
-static uint16_t (* const pWhatAddress[256]) (processor *) = { IMP, INDX, NOA, NOA, NOA, ZP, ZP,  NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,     // 0x
+static uint16_t (* const pWhatAddress[256]) (processor *) = { IMP, INDX, NOA, NOA, NOA, ZP, ZP,  NOA, IMP, IMM, ACC, NOA, NOA, ABS, ABS, NOA,     // 0x   // all opcodes
                                                        NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 1x
                                                        ABS, INDX, NOA, NOA, ZP, ZP, ZP, NOA, IMP, IMM, ACC, NOA, ABS, ABS, ABS, NOA, // 2x
                                                        NOA, INDY, NOA, NOA, NOA, ZPX, ZPX, NOA, IMP, ABSY, NOA, NOA, NOA, ABSX, ABSX, NOA, // 3x
@@ -268,11 +268,11 @@ int main(){
         uint8_t Memory [65536];
         MEMADDR = Memory;
 
-        Load (Memory);
+        Load (Memory); // download rom from binary file to memory
 
-        reset(Processor);
+        reset(Processor); // reset all registers
 
-        PC = 0x0400;
+        PC = 0x0400; // program counter in debugging rom starts here
 
 
         uint8_t cycles_to_count = 0;
@@ -281,23 +281,14 @@ int main(){
         {
                 if (cycles_to_count == 0) {
                         uint16_t crr_PC = PC;
-                        OPCODE = fetch_byte(Processor);
-                        ADDR = (*pWhatAddress[OPCODE])(Processor);
-                        (*pWhatMode[OPCODE])(Processor);
-                        if (stop == 0)
-                                printf("%04X %04X \n", OPCODE, crr_PC);
-                        cycles_to_count=cycles[OPCODE] + Processor->add_cycles;
+                        OPCODE = fetch_byte(Processor); // load byte from memory
+                        ADDR = (*pWhatAddress[OPCODE])(Processor); // find adressing mode of opcode
+                        (*pWhatMode[OPCODE])(Processor); //execute opcode
+                        cycles_to_count=cycles[OPCODE] + Processor->add_cycles; // add cycles + additional cycles
                         Processor->add_cycles = 0;
                 }
                 cycles_to_count--;
                 cycles_for_interrupt++;
-                if ((cycles_for_interrupt > INTERRUPT_PERIOD1) & (cycles_for_interrupt < INTERRUPT_PERIOD2))  {
-                        //    cycles_for_interrupt = 0;
-                        stop = 0;
-                }
-                else
-                        stop = 1;
-
         }
 
         return 0;
